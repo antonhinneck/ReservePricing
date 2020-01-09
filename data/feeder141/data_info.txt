@@ -1,2 +1,0 @@
-114 bus test feeder from 
-Khodr et al. (2007) "Maximum savings approach for location and sizing of capacitors in distribution systems"
