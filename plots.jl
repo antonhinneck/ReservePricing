@@ -1,4 +1,5 @@
 using PyPlot
+cd(@__DIR__)
 
 u_buses = Vector{String}()
 s_lmp_sys = Vector{Float64}()
@@ -14,15 +15,14 @@ for farm in farms
 
 end
 
-cd(@__DIR__)
-fig = figure(figsize=(8, 3.2))
-rc("font",family="serif",style="italic")
-rc("mathtext",fontset="dejavuserif")
-rc("lines",linewidth=1)
+fig = figure(figsize=(8, 3))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
 
-ax = fig.add_axes([0.09,0.125,0.9,0.86])
+ax = fig.add_axes([0.09,0.14,0.9,0.85])
 grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
-#ax.tick_params(direction="in",top=true,right=true,width=1.4)
+ax.tick_params(direction="in",top=true,right=true,width=1.4)
 
 #ax.set_axisbelow(true)
 xlabel("\$u\$")
@@ -30,28 +30,30 @@ ylabel("\$\\lambda_{u}\$")
 ##xlim(left=-5,right=5)
 #x = [0.01 * i for i in -50000:50000]
 
-plot(u_buses, s_lmp_sys, color = "blue",  label = "node-to-node", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
-plot(u_buses, s_lmp_n2n, color = "orange",  label = "node-to-node", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
+plot(u_buses, s_lmp_sys, color = "lightblue", mec = "blue", mfc = "blue", label = "system-wide", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
+plot(u_buses, s_lmp_n2n, color = "lightgreen", mec = "green", mfc = "green", label = "node-to-node", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
 
+legend(loc = "lower right",fancybox=false, edgecolor="black")
 savefig(string("lmp_sys_n2n.pdf"), format = :pdf)
 
-using PyPlot
-cd(@__DIR__)
-fig = figure(figsize=(8, 2.6))
-rc("font",family="serif",style="italic")
-rc("mathtext",fontset="dejavuserif")
-rc("lines",linewidth=1)
 
-ax = fig.add_axes([0.08,0.16,0.91,0.82])
+
+fig = figure(figsize=(8, 2.6))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
+
+ax = fig.add_axes([0.09,0.18,0.9,0.8])
 grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
-#ax.tick_params(direction="in",top=true,right=true,width=1.4)
+ax.tick_params(direction="in",top=true,right=true,width=1.4)
 
 #ax.set_axisbelow(true)
 xlabel("\$u\$")
 ylabel("\$\\sigma_{u}\$")
-##xlim(left=-5,right=5)
+ylim(bottom=0.05,top=0.45)
 #x = [0.01 * i for i in -50000:50000]
 
-plot(u_buses, σ, color = "navy",  label = "node-to-node", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
+plot(u_buses, σ, color = "lightgray", mec = "navy", mfc = "navy",  label = "\$\\sigma_{u}\$", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
 
+legend(loc = "upper right",fancybox=false, edgecolor="black")
 savefig(string("variances.pdf"), format = :pdf)

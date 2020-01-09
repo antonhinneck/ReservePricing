@@ -102,8 +102,8 @@ alphas_sys
 
 value.(m_dccc_n2n[:α])
 
-using DelimitedFiles
-writedlm(string(@__DIR__,"\\alphas_sys.csv"), alphas_sys,",")
-writedlm(string(@__DIR__,"\\alphas_i.csv"), alphas_i,",")
+#using DelimitedFiles
+#writedlm(string(@__DIR__,"\\alphas_sys.csv"), alphas_sys,",")
+#writedlm(string(@__DIR__,"\\alphas_i.csv"), alphas_i,",")
 
 include("plots.jl")
