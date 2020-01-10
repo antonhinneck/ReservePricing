@@ -6,6 +6,7 @@ using Mosek, MosekTools
 
 cd(@__DIR__)
 include("code_jl/input_dcopf.jl")
+include("code_jl/utils.jl")
 include("models/dccc.jl")
 
 datadir = "data/ieee118"
@@ -58,7 +59,9 @@ m_dccc = build_dccc(generators, buses, lines, farms)
 optimize!(m_dccc)
 objective_value(m_dccc)
 
-alphas_sys = value.(m_dccc[:α])
+a_s = value.(m_dccc[:α])
+λ_sys  = -dual.(m_dccc[:mc])
+#=
 dp = -dual.(m_dccc[:cc1])
 dm = -dual.(m_dccc[:cc2])
 λ_sys  = -dual.(m_dccc[:mc])
@@ -80,13 +83,18 @@ end
 #objective_value(m_dccc_fixedAlpha)
 
 #dα = -dual.(m_dccc_fixedAlpha[:fixed])
-
+=#
 include("models/dccc_n2n.jl")
 m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 
 optimize!(m_dccc_n2n)
 objective_value(m_dccc_n2n)
-alphas = value.(m_dccc_n2n[:α])
+
+alpha = value.(m_dccc_n2n[:α])
+λ_n2n  = -dual.(m_dccc_n2n[:mc])
+#a_s_n2n = alpha * ones(n_farms) / n_farms
+
+#=
 alphas_i = Array{Float64, 1}(undef, n_generators)
 for i in 1:n_generators
     for j in 1:n_farms
@@ -100,7 +108,52 @@ alphas_sys
 
 λ_n2n  = -dual.(m_dccc_n2n[:mc])
 
-value.(m_dccc_n2n[:α])
+value.(m_dccc_n2n[:α])=#
+
+include("models/dccc_ab.jl")
+m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
+optimize!(m_dccc_ab)
+
+objective_value(m_dccc_ab)
+
+ap = value.(m_dccc_ab[:αp])
+am = value.(m_dccc_ab[:αm])
+λ_n2n_ab  = -dual.(m_dccc_n2n[:mc])
+
+gens = Vector{Int64}()
+
+for i in 1:n_generators
+    push!(gens, generators[i].bus_idx)
+end
+
+l1 = Vector{Float64}()
+l2 = Vector{Float64}()
+l3 = Vector{Float64}()
+node_idx = Vector{Int64}()
+
+for i in 1:n_farms
+    push!(node_idx, farms[i].bus)
+    push!(l1, λ_sys[farms[i].bus])
+    push!(l2, λ_n2n[farms[i].bus])
+    push!(l3, λ_n2n_ab[farms[i].bus])
+end
+
+headings1 = ["i", "sym", "sym, n2n", "asym"]
+headings2 = ["","","",""]
+types = [Int64, Float64, Float64, Float64]
+body = hcat(node_idx, l1, l2, l3)
+
+TexTable("prices.txt", headings1, headings2, body, types)
+
+
+headings1 = ["Model", "sym", "asym", "asym"]
+headings2 = ["\$i\$", "\$\\alpha_{i}\$", "\$\\alpha^{-}_{i}\$", "\$\\alpha^{+}_{i}\$"]
+types = [Int, Float64, Float64, Float64]
+body = hcat(gens, a_s, ap, am)
+
+
+
+TexTable("test.txt", headings1, headings2, body, types)
 
 #using DelimitedFiles
 #writedlm(string(@__DIR__,"\\alphas_sys.csv"), alphas_sys,",")
