@@ -53,6 +53,58 @@ n_farms = size(farms, 1)
 
 slack_bus = findall(b -> b.is_slack, buses)[1]
 
+# Stochastic parameters
+#----------------------
+
+ϵ = 0.01
+z = quantile(Normal(0,1), 1-ϵ)
+p_U = [f.μ for f in farms]
+σ_vec = [f.σ for f in farms]
+s_sq = diagm(0 => (σ_vec.^2))
+s_rt = s_sq^(1/2)
+s = sum(s_rt)
+
+Σ = diagm(0 => (σ_vec))
+#Σ = diagm(0 => (σ_vec.^2))
+Σ_sq = sqrt(Σ)
+
+# Define B marix
+# Code (based on how .index value is determined) does not work for an arbitrary pglib dataset.
+# Sometimes, indexes are unique, but not in 1 ... n_lines or 1 ... n_buses.
+
+A = zeros(n_lines, n_buses)
+for i in 1:n_buses
+    if size(buses[i].start_line, 1) > 0
+        for l in buses[i].start_line
+            A[lines[l].index, i] = 1
+        end
+    end
+    if size(buses[i].end_line, 1) > 0
+        for l in buses[i].end_line
+            A[lines[l].index, i] = -1
+        end
+    end
+end
+
+x_vec = [l.x for l in lines]
+X = diagm(0 => x_vec)
+
+B = X ^ (-1) * A
+B_node = A' * B
+
+d = [b.d_P for b in buses]
+
+c_vec = [g.cost * 0.1 for g in generators]
+c_vec_sq = [sqrt(g.cost * 0.1) for g in generators]
+C_mat = diagm(0 => c_vec)
+C_rt = C_mat ^ (-1/2)
+
+## MODELS
+##-----------------
+
+## SYMMETRIC
+##------------------
+
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
 
@@ -84,12 +136,19 @@ end
 
 #dα = -dual.(m_dccc_fixedAlpha[:fixed])
 =#
+
+## Symetric N2N
+##-------------
+
 include("models/dccc_n2n.jl")
 m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 
 optimize!(m_dccc_n2n)
 objective_value(m_dccc_n2n)
 
+value.(m_dccc_n2n[:p_uncert])
+value.(m_dccc_n2n[:r_uncert])
+value.(m_dccc_n2n[:r_sched])
 alpha = value.(m_dccc_n2n[:α])
 λ_n2n  = -dual.(m_dccc_n2n[:mc])
 #a_s_n2n = alpha * ones(n_farms) / n_farms
@@ -109,6 +168,9 @@ alphas_sys
 λ_n2n  = -dual.(m_dccc_n2n[:mc])
 
 value.(m_dccc_n2n[:α])=#
+
+## Asymetric
+##----------
 
 include("models/dccc_ab.jl")
 m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)

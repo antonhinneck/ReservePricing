@@ -58,7 +58,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @variable(m, p[1:n_generators])
     @variable(m, f[1:n_lines])
     @variable(m, θ[1:n_buses])
-    @variable(m, α[1:n_generators, 1:n_farms] >= 0)
+    @variable(m, αp[1:n_generators, 1:n_farms] >= 0)
+    @variable(m, αm[1:n_generators, 1:n_farms] >= 0)
 
     # Constraints
     #------------
@@ -72,8 +73,10 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].s_max)
 
     @constraint(m, reserve, sum(α[i, u] for i in 1:n_generators for u in 1:n_farms) == 1)
-    @variable(m, p_uncert[1:n_generators])
-    @constraint(m, conicgen[i in 1:n_generators], vec(vcat(p_uncert[i], 0.5, α[i, :]' * s * ones(n_farms))) in RotatedSecondOrderCone())
+    @variable(m, pp_uncert[1:n_generators])
+    @variable(m, pm_uncert[1:n_generators])
+    @constraint(m, conicgen1[i in 1:n_generators], vec(vcat(p_uncert[i], 0.5, αp[i, :]' * s * ones(n_farms))) in RotatedSecondOrderCone())
+    @constraint(m, conicgen2[i in 1:n_generators], vec(vcat(p_uncert[i], 0.5, αm[i, :]' * s * ones(n_farms))) in RotatedSecondOrderCone())
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].g_max)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= 0)
 
