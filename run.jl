@@ -118,7 +118,7 @@ objective_value(m_dccc_ab)
 
 ap = value.(m_dccc_ab[:αp])
 am = value.(m_dccc_ab[:αm])
-λ_n2n_ab  = -dual.(m_dccc_n2n[:mc])
+λ_n2n_ab  = -dual.(m_dccc_ab[:mc])
 
 gens = Vector{Int64}()
 
@@ -133,27 +133,24 @@ node_idx = Vector{Int64}()
 
 for i in 1:n_farms
     push!(node_idx, farms[i].bus)
-    push!(l1, λ_sys[farms[i].bus])
-    push!(l2, λ_n2n[farms[i].bus])
-    push!(l3, λ_n2n_ab[farms[i].bus])
+    push!(l1, λ_sys[farms[i].bus] / 100)
+    push!(l2, λ_n2n[farms[i].bus] / 100)
+    push!(l3, λ_n2n_ab[farms[i].bus] / 100)
 end
 
-headings1 = ["i", "sym", "sym, n2n", "asym"]
+headings1 = ["i", "sym", "asym", "sym_n2n"]
 headings2 = ["","","",""]
 types = [Int64, Float64, Float64, Float64]
-body = hcat(node_idx, l1, l2, l3)
+body = hcat(node_idx, l1, l3, l2)
 
-TexTable("prices.txt", headings1, headings2, body, types)
-
+TexTable("texTables//prices.txt", headings1, headings2, body, types)
 
 headings1 = ["Model", "sym", "asym", "asym"]
 headings2 = ["\$i\$", "\$\\alpha_{i}\$", "\$\\alpha^{-}_{i}\$", "\$\\alpha^{+}_{i}\$"]
 types = [Int, Float64, Float64, Float64]
 body = hcat(gens, a_s, ap, am)
 
-
-
-TexTable("test.txt", headings1, headings2, body, types)
+TexTable("texTables//alphas.txt", headings1, headings2, body, types)
 
 #using DelimitedFiles
 #writedlm(string(@__DIR__,"\\alphas_sys.csv"), alphas_sys,",")

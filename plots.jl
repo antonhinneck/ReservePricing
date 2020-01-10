@@ -10,8 +10,8 @@ for farm in farms
 
     push!(u_buses, string(farm.bus))
     push!(σ, farm.σ)
-    push!(s_lmp_sys, λ_sys[farm.bus])
-    push!(s_lmp_n2n, λ_n2n[farm.bus])
+    push!(s_lmp_sys, λ_sys[farm.bus] / 100)
+    push!(s_lmp_n2n, λ_n2n[farm.bus] / 100)
 
 end
 
@@ -34,9 +34,7 @@ plot(u_buses, s_lmp_sys, color = "lightblue", mec = "blue", mfc = "blue", label 
 plot(u_buses, s_lmp_n2n, color = "lightgreen", mec = "green", mfc = "green", label = "node-to-node", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
 
 legend(loc = "lower right",fancybox=false, edgecolor="black")
-savefig(string("lmp_sys_n2n.pdf"), format = :pdf)
-
-
+savefig(string("plots//lmp_sys_n2n.pdf"), format = :pdf)
 
 fig = figure(figsize=(8, 2.6))
 rc("font", family = "serif", style = "italic", size = 14)
@@ -56,4 +54,4 @@ ylim(bottom=0.05,top=0.45)
 plot(u_buses, σ, color = "lightgray", mec = "navy", mfc = "navy",  label = "\$\\sigma_{u}\$", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
 
 legend(loc = "upper right",fancybox=false, edgecolor="black")
-savefig(string("variances.pdf"), format = :pdf)
+savefig(string("plots//variances.pdf"), format = :pdf)
