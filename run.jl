@@ -99,88 +99,70 @@ c_vec_sq = [sqrt(g.cost * 0.1) for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = C_mat ^ (-1/2)
 
-## MODELS
-##-----------------
-
-## SYMMETRIC
+## MODELS, SYMMETRIC
 ##------------------
 
-include("models/dccc.jl")
-m_dccc = build_dccc(generators, buses, lines, farms)
+    ## SYMMETRIC SYSTEM-WIDE
+    ##----------------------
 
-optimize!(m_dccc)
-objective_value(m_dccc)
+    include("models/dccc.jl")
+    m_dccc = build_dccc(generators, buses, lines, farms)
 
-a_s = value.(m_dccc[:α])
-λ_sys  = -dual.(m_dccc[:mc])
-#=
-dp = -dual.(m_dccc[:cc1])
-dm = -dual.(m_dccc[:cc2])
-λ_sys  = -dual.(m_dccc[:mc])
-ηp = -dual.(m_dccc[:flowlim1])
-ηm = -dual.(m_dccc[:flowlim2])
+    optimize!(m_dccc)
+    objective_value(m_dccc)
 
-congested_lines = Vector{Int64}()
+    value.(m_dccc[:r_uncert])
+    value.(m_dccc[:r_sched])
 
-for i in 1:n_lines
-    if abs(ηp[i]) >= 0.001 || abs(ηm[i]) >= 0.001
-        push!(congested_lines, i)
-    end
-end
+    a_s = value.(m_dccc[:α])
+    λ_sys  = -dual.(m_dccc[:mc])
 
-#include("models/dccc_fixedAlpha.jl")
-#m_dccc_fixedAlpha = build_dccc_fixed(generators, buses, lines, farms, value.(m_dccc[:α]))
+    ## SYMMETRIC N2N
+    ##--------------
 
-#optimize!(m_dccc_fixedAlpha)
-#objective_value(m_dccc_fixedAlpha)
+    include("models/dccc_n2n.jl")
+    m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 
-#dα = -dual.(m_dccc_fixedAlpha[:fixed])
-=#
+    optimize!(m_dccc_n2n)
+    objective_value(m_dccc_n2n)
+    termination_status(m_dccc_n2n)
 
-## Symetric N2N
-##-------------
+    value.(m_dccc_n2n[:p_uncert])
+    value.(m_dccc_n2n[:r_sched])
+    value.(m_dccc_n2n[:r_uncert])
+    sum(value.(m_dccc_n2n[:p_uncert]))
+    alpha = value.(m_dccc_n2n[:α])
+    sum(value.(m_dccc_n2n[:α])[:,2])
+    λ_n2n  = -dual.(m_dccc_n2n[:mc])
 
-include("models/dccc_n2n.jl")
-m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
+## MODELS, ASYMMETRIC
+##-------------------
 
-optimize!(m_dccc_n2n)
-objective_value(m_dccc_n2n)
+    ## ASYMMETRIC SYSTEM-WIDE
+    ##-----------------------
 
-value.(m_dccc_n2n[:p_uncert])
-value.(m_dccc_n2n[:r_uncert])
-value.(m_dccc_n2n[:r_sched])
-alpha = value.(m_dccc_n2n[:α])
-λ_n2n  = -dual.(m_dccc_n2n[:mc])
-#a_s_n2n = alpha * ones(n_farms) / n_farms
+    include("models/dccc_ab.jl")
+    m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
+    optimize!(m_dccc_ab)
+    objective_value(m_dccc_ab)
 
-#=
-alphas_i = Array{Float64, 1}(undef, n_generators)
-for i in 1:n_generators
-    for j in 1:n_farms
-        alphas_i[i] += alphas[i, j]
-    end
-end
-alphas_i
-diff = alphas_sys .- alphas_i
-diff = abs.(diff)
-alphas_sys
+    ap = value.(m_dccc_ab[:αp])
+    am = value.(m_dccc_ab[:αm])
+    λ_n2n_ab  = -dual.(m_dccc_ab[:mc])
 
-λ_n2n  = -dual.(m_dccc_n2n[:mc])
+    diff = ap .- am
 
-value.(m_dccc_n2n[:α])=#
+    ## ASYMMETRIC N2N
+    ##---------------
 
-## Asymetric
-##----------
+    include("models/dccc_n2n_ab.jl")
+    m_dccc_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
+    optimize!(m_dccc_ab)
+    objective_value(m_dccc_ab)
+    termination_status(m_dccc_ab)
 
-include("models/dccc_ab.jl")
-m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
-optimize!(m_dccc_ab)
-
-objective_value(m_dccc_ab)
-
-ap = value.(m_dccc_ab[:αp])
-am = value.(m_dccc_ab[:αm])
-λ_n2n_ab  = -dual.(m_dccc_ab[:mc])
+## EXPORT
+##-------
 
 gens = Vector{Int64}()
 
