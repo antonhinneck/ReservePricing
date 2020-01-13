@@ -29,15 +29,17 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
 
     @variable(m, pp_uncert[1:n_generators] >= 0)
     @variable(m, pm_uncert[1:n_generators] >= 0)
-    @constraint(m, uncert_gen1[i in 1:n_generators], pp_uncert[i] == sum(αp[i, u] * Σ[u,u] for u in 1:n_farms))
-    @constraint(m, uncert_gen2[i in 1:n_generators], pm_uncert[i] == sum(αm[i, u] * Σ[u,u] for u in 1:n_farms))
+    @expression(m, norm_up, αp * Σ_sq)
+    @expression(m, norm_dwn, αm * Σ_sq)
+    @constraint(m, uncert_gen1[i in 1:n_generators], vec(vcat(pp_uncert[i], norm_up[i, :])) in SecondOrderCone())
+    @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i, :])) in SecondOrderCone())
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * pp_uncert[i] <= generators[i].g_max)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * pm_uncert[i] <= 0)
 
     ## Linear Cost
     ##------------
-    @expression(m, linear_cost, sum((p[i] + pp_uncert[i] - pm_uncert[i]) * generators[i].cost for i in 1:n_generators))
+    @expression(m, linear_cost, sum((p[i] + pp_uncert[i] + pm_uncert[i]) * generators[i].cost for i in 1:n_generators))
 
     ## Quadratic Cost
     ##---------------

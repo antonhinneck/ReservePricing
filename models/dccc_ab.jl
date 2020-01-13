@@ -33,7 +33,7 @@ function build_dccc_ab(generators, buses, lines, farms)
 
     ## Linear Cost
     ##------------
-    @expression(m, linear_cost, sum((p[i] + αp[i] - αm[i]) * generators[i].cost for i in 1:n_generators))
+    @expression(m, linear_cost, sum((p[i] + αp[i] + αm[i]) * generators[i].cost for i in 1:n_generators))
 
     ## Quadratic Cost
     ##---------------

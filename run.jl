@@ -133,7 +133,7 @@ C_rt = C_mat ^ (-1/2)
     sum(value.(m_dccc_n2n[:p_uncert]))
     alpha = value.(m_dccc_n2n[:α])
     sum(value.(m_dccc_n2n[:α])[:,2])
-    λ_n2n  = -dual.(m_dccc_n2n[:mc])
+    #λ_n2n  = -dual.(m_dccc_n2n[:mc])
 
 ## MODELS, ASYMMETRIC
 ##-------------------
@@ -148,6 +148,7 @@ C_rt = C_mat ^ (-1/2)
 
     ap = value.(m_dccc_ab[:αp])
     am = value.(m_dccc_ab[:αm])
+    value.(m_dccc_ab[:r_uncert])
     λ_n2n_ab  = -dual.(m_dccc_ab[:mc])
 
     diff = ap .- am
@@ -156,10 +157,11 @@ C_rt = C_mat ^ (-1/2)
     ##---------------
 
     include("models/dccc_n2n_ab.jl")
-    m_dccc_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
-    optimize!(m_dccc_ab)
-    objective_value(m_dccc_ab)
-    termination_status(m_dccc_ab)
+    m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
+    optimize!(m_dccc_n2n_ab)
+    objective_value(m_dccc_n2n_ab)
+    termination_status(m_dccc_n2n_ab)
+    value.(m_dccc_n2n_ab[:r_uncert])
 
 ## EXPORT
 ##-------

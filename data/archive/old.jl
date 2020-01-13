@@ -21,3 +21,7 @@
     #MSK_DPAR_INTPNT_CO_TOL_REL_GAP = 0.00001,
     MSK_DPAR_INTPNT_TOL_REL_STEP = 0.9,
     MSK_IPAR_INTPNT_DIFF_STEP = 1
+
+    #@constraint(m, uncert_gen[i in 1:n_generators], p_uncert[i] == sum(α[i, u] * Σ[u,u] for u in 1:n_farms))
+    #@constraint(m, uncert_gen1[i in 1:n_generators], pp_uncert[i] == sum(αp[i, u] * Σ[u,u] for u in 1:n_farms))
+    #@constraint(m, uncert_gen2[i in 1:n_generators], pm_uncert[i] == sum(αm[i, u] * Σ[u,u] for u in 1:n_farms))
