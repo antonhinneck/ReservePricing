@@ -7,6 +7,7 @@ s_lmp_n2n = Vector{Float64}()
 a_lmp = Vector{Float64}()
 a_lmp_n2n = Vector{Float64}()
 σ = Vector{Float64}()
+bus = [i for i in 1:n_buses]
 
 for farm in farms
 
@@ -40,7 +41,30 @@ plot(u_buses, a_lmp, color = "yellow", mec = "orange", mfc = "orange", label = "
 plot(u_buses, a_lmp_n2n, color = "coral", mec = "red", mfc = "red", label = "asym, node-to-node", lw = 1, ls = "dashed", marker = "+", ms = 7.4, mew = 1.6)
 
 legend(loc = "lower right",fancybox=false, edgecolor="black")
-savefig(string("plots//lmp_sys_n2n.pdf"), format = :pdf)
+savefig(string("plots//lmps_u.pdf"), format = :pdf)
+
+fig = figure(figsize=(8, 3))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
+
+ax = fig.add_axes([0.09,0.14,0.9,0.85])
+grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
+ax.tick_params(direction="in",top=true,right=true,width=1.4)
+
+#ax.set_axisbelow(true)
+xlabel("\$i\$")
+ylabel("\$\\lambda_{i}\$")
+##xlim(left=-5,right=5)
+#x = [0.01 * i for i in -50000:50000]
+
+plot(bus, λ / 100, color = "lightblue", mec = "blue", mfc = "blue", label = "sym, system-wide", lw = 0.8, ls = "dashed", marker = "D", ms = 1.5, mew = 1)
+plot(bus, λ_n2n / 100, color = "lightgreen", mec = "green", mfc = "green", label = "sym, node-to-node", lw = 0.8, ls = "dashed", marker = "D", ms = 1.5, mew = 1)
+plot(bus, λ_ab / 100, color = "yellow", mec = "orange", mfc = "orange", label = "asym, system-wide", lw = 0.8, ls = "dashed", marker = "D", ms = 1.5, mew = 1)
+plot(bus, λ_n2n_ab / 100, color = "coral", mec = "red", mfc = "red", label = "asym, node-to-node", lw = 0.8, ls = "dashed", marker = "D", ms = 1.5, mew = 1)
+
+legend(loc = "lower center",fancybox=false, edgecolor="black")
+savefig(string("plots//lmps.pdf"), format = :pdf)
 
 fig = figure(figsize=(8, 2.6))
 rc("font", family = "serif", style = "italic", size = 14)
