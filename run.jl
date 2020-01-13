@@ -115,7 +115,7 @@ C_rt = C_mat ^ (-1/2)
     value.(m_dccc[:r_sched])
 
     a_s = value.(m_dccc[:α])
-    λ_sys  = -dual.(m_dccc[:mc])
+    λ  = -dual.(m_dccc[:mc])
 
     ## SYMMETRIC N2N
     ##--------------
@@ -132,8 +132,8 @@ C_rt = C_mat ^ (-1/2)
     value.(m_dccc_n2n[:r_uncert])
     sum(value.(m_dccc_n2n[:p_uncert]))
     alpha = value.(m_dccc_n2n[:α])
-    sum(value.(m_dccc_n2n[:α])[:,2])
-    #λ_n2n  = -dual.(m_dccc_n2n[:mc])
+    sum(value.(m_dccc_n2n[:α]))
+    λ_n2n  = -dual.(m_dccc_n2n[:mc])
 
 ## MODELS, ASYMMETRIC
 ##-------------------
@@ -149,7 +149,7 @@ C_rt = C_mat ^ (-1/2)
     ap = value.(m_dccc_ab[:αp])
     am = value.(m_dccc_ab[:αm])
     value.(m_dccc_ab[:r_uncert])
-    λ_n2n_ab  = -dual.(m_dccc_ab[:mc])
+    λ_ab  = -dual.(m_dccc_ab[:mc])
 
     diff = ap .- am
 
@@ -162,6 +162,7 @@ C_rt = C_mat ^ (-1/2)
     objective_value(m_dccc_n2n_ab)
     termination_status(m_dccc_n2n_ab)
     value.(m_dccc_n2n_ab[:r_uncert])
+    λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
 
 ## EXPORT
 ##-------
@@ -174,14 +175,16 @@ end
 
 l1 = Vector{Float64}()
 l2 = Vector{Float64}()
-l3 = Vector{Float64}()
+l3= Vector{Float64}()
+l4 = Vector{Float64}()
 node_idx = Vector{Int64}()
 
 for i in 1:n_farms
     push!(node_idx, farms[i].bus)
-    push!(l1, λ_sys[farms[i].bus] / 100)
+    push!(l1, λ[farms[i].bus] / 100)
     push!(l2, λ_n2n[farms[i].bus] / 100)
-    push!(l3, λ_n2n_ab[farms[i].bus] / 100)
+    push!(l3, λ_ab[farms[i].bus] / 100)
+    push!(l4, λ_n2n_ab[farms[i].bus] / 100)
 end
 
 headings1 = ["i", "sym", "asym", "sym_n2n"]

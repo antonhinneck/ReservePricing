@@ -18,7 +18,7 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, θ[slack_bus] == 0)
     @expression(m, p_by_bus[i=1:n_buses], length(buses[i].gen_list) > 0 ? sum(p[k] for k in buses[i].gen_list) : 0.0)
     @expression(m, pu_by_bus[i=1:n_buses], length(buses[i].farm_list) > 0 ? sum(farms[k].μ for k in buses[i].farm_list) : 0.0)
-    @constraint(m, B_node * θ .== p_by_bus .+ pu_by_bus .- d)
+    @constraint(m, mc, B_node * θ .== p_by_bus .+ pu_by_bus .- d)
 
     @constraint(m, B * θ .== f)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].s_max)
