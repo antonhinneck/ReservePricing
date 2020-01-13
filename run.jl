@@ -116,6 +116,7 @@ C_rt = C_mat ^ (-1/2)
 
     a_s = value.(m_dccc[:α])
     λ  = -dual.(m_dccc[:mc])
+    γ = -dual.(m_dccc[:γ])
 
     ## SYMMETRIC N2N
     ##--------------
@@ -134,6 +135,7 @@ C_rt = C_mat ^ (-1/2)
     alpha = value.(m_dccc_n2n[:α])
     sum(value.(m_dccc_n2n[:α]))
     λ_n2n  = -dual.(m_dccc_n2n[:mc])
+    χ = -dual.(m_dccc_n2n[:χ])
 
 ## MODELS, ASYMMETRIC
 ##-------------------
@@ -148,8 +150,11 @@ C_rt = C_mat ^ (-1/2)
 
     ap = value.(m_dccc_ab[:αp])
     am = value.(m_dccc_ab[:αm])
-    value.(m_dccc_ab[:r_uncert])
+    #value.(m_dccc_ab[:r_uncert])
     λ_ab  = -dual.(m_dccc_ab[:mc])
+
+    γp = dual.(m_dccc_ab[:γp])
+    γm = dual.(m_dccc_ab[:γm])
 
     diff = ap .- am
 
@@ -163,6 +168,8 @@ C_rt = C_mat ^ (-1/2)
     termination_status(m_dccc_n2n_ab)
     value.(m_dccc_n2n_ab[:r_uncert])
     λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
+    χp = -dual.(m_dccc_n2n_ab[:χp])
+    χm = -dual.(m_dccc_n2n_ab[:χm])
 
 ## EXPORT
 ##-------

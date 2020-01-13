@@ -8,6 +8,7 @@ a_lmp = Vector{Float64}()
 a_lmp_n2n = Vector{Float64}()
 σ = Vector{Float64}()
 bus = [i for i in 1:n_buses]
+gens = [i for i in 1:n_generators]
 
 for farm in farms
 
@@ -65,6 +66,25 @@ plot(bus, λ_n2n_ab / 100, color = "coral", mec = "red", mfc = "red", label = "a
 
 legend(loc = "lower center",fancybox=false, edgecolor="black")
 savefig(string("plots//lmps.pdf"), format = :pdf)
+
+fig = figure(figsize=(5, 3))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
+
+ax = fig.add_axes([0.14,0.15,0.82,0.84])
+grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
+ax.tick_params(direction="in",top=true,right=true,width=1.4)
+
+#ax.set_axisbelow(true)
+xlabel("Case")
+ylabel("\$\\gamma\$")
+##xlim(left=-5,right=5)
+#x = [0.01 * i for i in -50000:50000]
+
+plot(["sym", "asym -", "asym +"], [γ, γm, γp], color = "lightblue", mec = "blue", mfc = "blue", label = "symmetric", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+
+savefig(string("plots//gamma.pdf"), format = :pdf)
 
 fig = figure(figsize=(8, 2.6))
 rc("font", family = "serif", style = "italic", size = 14)

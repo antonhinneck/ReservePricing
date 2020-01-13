@@ -25,21 +25,21 @@ function build_dccc(generators, buses, lines, farms)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].s_max)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].s_max)
 
-    @constraint(m, reserve, sum(α[i] for i in 1:n_generators) == 1)
+    @constraint(m, γ, sum(α[i] for i in 1:n_generators) == 1)
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * α[i] * s <= generators[i].g_max)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * α[i] * s <= 0)
 
     ## Linear Cost
     ##------------
-    @expression(m, linear_cost, sum((p[i] + α[i]) * generators[i].cost for i in 1:n_generators))
+    @expression(m, linear_cost, sum(p[i] * generators[i].cost for i in 1:n_generators))
 
     ## Quadratic Cost
     ##---------------
     @variable(m, r_uncert >= 0)
     @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt' * α * s)) in RotatedSecondOrderCone())
-    @constraint(m, vcat(0.5, r_sched, C_rt' * p) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, r_uncert,  C_rt' * α * s)) in RotatedSecondOrderCone())
+    @constraint(m, vcat(r_sched, 0.5, C_rt' * p) in RotatedSecondOrderCone())
     @expression(m, quad_cost, r_sched + r_uncert)
 
     ## Objective

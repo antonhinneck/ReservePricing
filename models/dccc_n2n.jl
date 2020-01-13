@@ -23,7 +23,7 @@ function build_dccc_n2n(generators, buses, lines, farms)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].s_max)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].s_max)
 
-    @constraint(m, reserve[u in 1:n_farms], sum(α[i, u] for i in 1:n_generators) == 1)
+    @constraint(m, χ[u in 1:n_farms], sum(α[i, u] for i in 1:n_generators) == 1)
 
     @variable(m, p_uncert[1:n_generators] >= 0)
     @expression(m, norm, α * Σ_sq)
@@ -34,7 +34,7 @@ function build_dccc_n2n(generators, buses, lines, farms)
 
     ## Linear Cost
     ##------------
-    @expression(m, linear_cost, sum((p[i] + p_uncert[i]) * generators[i].cost for i in 1:n_generators))
+    @expression(m, linear_cost, sum(p[i] * generators[i].cost for i in 1:n_generators))
 
     ## Quadratic Cost
     ##---------------

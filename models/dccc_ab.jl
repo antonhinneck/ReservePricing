@@ -25,21 +25,21 @@ function build_dccc_ab(generators, buses, lines, farms)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].s_max)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].s_max)
 
-    @constraint(m, reserve1, sum(αp[i] for i in 1:n_generators) == 1)
-    @constraint(m, reserve2, sum(αm[i] for i in 1:n_generators) == 1)
+    @constraint(m, γp, sum(αp[i] for i in 1:n_generators) == 1)
+    @constraint(m, γm, sum(αm[i] for i in 1:n_generators) == 1)
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * αm[i] * s <= generators[i].g_max)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * αp[i] * s <= 0)
 
     ## Linear Cost
     ##------------
-    @expression(m, linear_cost, sum((p[i] + αp[i] + αm[i]) * generators[i].cost for i in 1:n_generators))
+    @expression(m, linear_cost, sum(p[i] * generators[i].cost for i in 1:n_generators))
 
     ## Quadratic Cost
     ##---------------
     @variable(m, r_uncert >= 0)
     @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(r_uncert, 0.5, vcat(C_rt' * αp * s, C_rt' * αm * s))) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(r_uncert, 0.5, C_rt' * αp * s, C_rt' * αm * s)) in RotatedSecondOrderCone())
     @constraint(m, vcat(r_sched, 0.5, C_rt' * p) in RotatedSecondOrderCone())
     @expression(m, quad_cost, r_sched + r_uncert)
 
