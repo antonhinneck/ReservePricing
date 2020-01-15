@@ -137,3 +137,12 @@ end
 ## WRITE: multigraph module, integrating with LightGraphs
 ## REF:  https://github.com/chelseas/Multigraphs.jl/blob/master/src/multigraph_core.jl
 #-------------------------------------------------------------------------------------
+
+abstract type AbstractMultiGraph{T <: Integer} <: AbstractGraph{T} end
+
+mutable struct MultiGraph{T <: Integer} <: AbstractMultiGraph{T}
+
+    ne::Int
+    fadjlist::Vector{Vector{T}} # [src]: (dst, dst, dst)
+
+end
