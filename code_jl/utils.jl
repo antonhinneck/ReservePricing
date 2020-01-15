@@ -84,3 +84,51 @@ function TexTable(name::String, headings1::Vector{String}, headings2::Vector{Str
     close(io)
 
 end
+
+## GRAPH FUNCTIONS
+##----------------------------
+## IMPORT: Types and functions
+##----------------------------
+using LightGraphs: AbstractSimpleGraph, SimpleGraph, ne, nv, add_vertex!, add_edge!
+
+## DEFINE: Functions
+##----------------------------
+function edge_exists(graph::T where T <: AbstractSimpleGraph, from::T where T <: Integer, to::T where T <: Integer)
+    return from in graph.fadjlist[to]
+end
+
+function create_graph()
+
+    ## Maps are needed in case a line or bus has a unique key (index)
+    ## that is not integer and incremented by 1 for every element.
+    ##---------------------------------------------------------------
+    bus_map = Dict{Any, T where T <: Integer}()
+    line_map = Dict{Any, T where T <: Integer}()
+    graph = SimpleGraph()
+
+    ## Add vertices
+    ##-------------
+
+    cnt = 1
+    for b in buses
+        push!(bus_map, b.index => cnt)
+        add_vertex!(graph)
+        global cnt += 1
+    end
+
+    ## Add edges
+    ##-------------
+
+    cnt = 1
+    last_ne = 0
+    for l in lines
+        push!(line_map, l.index => cnt)
+        if !edge_exists(graph, bus_map[l.from_node], bus_map[l.to_node])
+            add_edge!(graph, bus_map[l.from_node], bus_map[l.to_node])
+        else
+            println(string("Parallel edge at: ",l.index))
+        end
+        global cnt += 1
+    end
+    return graph
+end
