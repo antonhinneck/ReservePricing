@@ -9,6 +9,7 @@ a_lmp_n2n = Vector{Float64}()
 σ = Vector{Float64}()
 bus = [i for i in 1:n_buses]
 gens = [i for i in 1:n_generators]
+ures = [i for i in 1:n_farms]
 
 for farm in farms
 
@@ -49,6 +50,9 @@ rc("font", family = "serif", style = "italic", size = 14)
 rc("text", usetex = true)
 rc("lines", linewidth = 1)
 
+## SYSTEM-WIDE AND N2N
+##--------------------
+
 ax = fig.add_axes([0.09,0.14,0.9,0.85])
 grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
 ax.tick_params(direction="in",top=true,right=true,width=1.4)
@@ -67,24 +71,7 @@ plot(bus, λ_n2n_ab / 100, color = "coral", mec = "red", mfc = "red", label = "a
 legend(loc = "lower center",fancybox=false, edgecolor="black")
 savefig(string("plots//lmps.pdf"), format = :pdf)
 
-fig = figure(figsize=(5, 3))
-rc("font", family = "serif", style = "italic", size = 14)
-rc("text", usetex = true)
-rc("lines", linewidth = 1)
-
-ax = fig.add_axes([0.14,0.15,0.82,0.84])
-grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
-ax.tick_params(direction="in",top=true,right=true,width=1.4)
-
-#ax.set_axisbelow(true)
-xlabel("Case")
-ylabel("\$\\gamma\$")
-##xlim(left=-5,right=5)
-#x = [0.01 * i for i in -50000:50000]
-
-plot(["sym", "asym -", "asym +"], [γ, γm, γp], color = "lightblue", mec = "blue", mfc = "blue", label = "symmetric", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
-
-savefig(string("plots//gamma.pdf"), format = :pdf)
+  # VARIANCES
 
 fig = figure(figsize=(8, 2.6))
 rc("font", family = "serif", style = "italic", size = 14)
@@ -105,3 +92,50 @@ plot(u_buses, σ, color = "lightgray", mec = "navy", mfc = "navy",  label = "\$\
 
 legend(loc = "upper right",fancybox=false, edgecolor="black")
 savefig(string("plots//variances.pdf"), format = :pdf)
+
+## SYSTEM-WIDE
+##------------
+
+fig = figure(figsize=(5, 3))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
+
+ax = fig.add_axes([0.14,0.15,0.82,0.84])
+grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
+ax.tick_params(direction="in",top=true,right=true,width=1.4)
+
+#ax.set_axisbelow(true)
+xlabel("Case")
+ylabel("\$\\gamma\$")
+##xlim(left=-5,right=5)
+#x = [0.01 * i for i in -50000:50000]
+
+plot(["sym", "asym -", "asym +"], [γ, γm, γp], color = "lightblue", mec = "blue", mfc = "blue", label = "symmetric", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+
+savefig(string("plots//gamma.pdf"), format = :pdf)
+
+## N2N
+##----
+
+fig = figure(figsize=(5, 3))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
+
+ax = fig.add_axes([0.14,0.15,0.82,0.84])
+grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
+ax.tick_params(direction="in",top=true,right=true,width=1.4)
+
+#ax.set_axisbelow(true)
+xlabel("\$u\$")
+ylabel("\$\\chi_{u}\$")
+##xlim(left=-5,right=5)
+#x = [0.01 * i for i in -50000:50000]
+
+plot(ures, χ, color = "coral", mec = "red", mfc = "red", label = "sym", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+plot(ures, χp, color = "lightblue", mec = "blue", mfc = "blue", label = "asym +", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+plot(ures, χm, color = "lightgreen", mec = "green", mfc = "green", label = "asym -", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+
+legend(loc = "lower center",fancybox=false, edgecolor="black")
+savefig(string("plots//chi.pdf"), format = :pdf)

@@ -113,7 +113,7 @@ function create_graph()
     for b in buses
         push!(bus_map, b.index => cnt)
         add_vertex!(graph)
-        global cnt += 1
+        cnt += 1
     end
 
     ## Add edges
@@ -128,7 +128,7 @@ function create_graph()
         else
             println(string("Parallel edge at: ",l.index))
         end
-        global cnt += 1
+        cnt += 1
     end
     return graph
 end
