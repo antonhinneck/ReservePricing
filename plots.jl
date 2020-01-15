@@ -133,9 +133,9 @@ ylabel("\$\\chi_{u}\$")
 ##xlim(left=-5,right=5)
 #x = [0.01 * i for i in -50000:50000]
 
-plot(ures, χ, color = "coral", mec = "red", mfc = "red", label = "sym", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
-plot(ures, χp, color = "lightblue", mec = "blue", mfc = "blue", label = "asym +", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
-plot(ures, χm, color = "lightgreen", mec = "green", mfc = "green", label = "asym -", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+plot(u_buses, χ, color = "coral", mec = "red", mfc = "red", label = "sym", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+plot(u_buses, χp, color = "lightblue", mec = "blue", mfc = "blue", label = "asym +", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+plot(u_buses, χm, color = "lightgreen", mec = "green", mfc = "green", label = "asym -", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
 
-legend(loc = "lower center",fancybox=false, edgecolor="black")
+legend(loc = "lower left",fancybox=false, edgecolor="black")
 savefig(string("plots//chi.pdf"), format = :pdf)

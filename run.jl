@@ -67,6 +67,7 @@ s = sum(s_rt)
 Σ = diagm(0 => (σ_vec))
 #Σ = diagm(0 => (σ_vec.^2))
 Σ_sq = sqrt(Σ)
+s_vec = [s * s for i in 1:n_generators]
 
 # Define B marix
 # Code (based on how .index value is determined) does not work for an arbitrary pglib dataset.
@@ -97,7 +98,8 @@ d = [b.d_P for b in buses]
 c_vec = [g.cost * 0.1 for g in generators]
 c_vec_sq = [sqrt(g.cost * 0.1) for g in generators]
 C_mat = diagm(0 => c_vec)
-C_rt = C_mat ^ (-1/2)
+C_rt = sqrt(C_mat) #^ (-1/2)
+C_rt2 = diagm(0 => c_vec_sq)
 
 ## MODELS, SYMMETRIC
 ##------------------
@@ -148,13 +150,16 @@ C_rt = C_mat ^ (-1/2)
     optimize!(m_dccc_ab)
     objective_value(m_dccc_ab)
 
+    #value.(m_dccc_ab[:p_uncert])
+    value.(m_dccc_ab[:r_sched])
+    value.(m_dccc_ab[:r_uncert])
     ap = value.(m_dccc_ab[:αp])
     am = value.(m_dccc_ab[:αm])
     #value.(m_dccc_ab[:r_uncert])
     λ_ab  = -dual.(m_dccc_ab[:mc])
 
-    γp = dual.(m_dccc_ab[:γp])
-    γm = dual.(m_dccc_ab[:γm])
+    γp = -dual.(m_dccc_ab[:γp])
+    γm = -dual.(m_dccc_ab[:γm])
 
     diff = ap .- am
 
