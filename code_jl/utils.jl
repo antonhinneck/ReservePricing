@@ -89,7 +89,7 @@ end
 ##----------------------------
 ## IMPORT: Types and functions
 ##----------------------------
-using LightGraphs: AbstractSimpleGraph, SimpleGraph, ne, nv, add_vertex!, add_edge!
+using LightGraphs: AbstractGraph, AbstractSimpleGraph, SimpleGraph, ne, nv, add_vertex!, add_edge!
 
 ## DEFINE: Functions
 ##----------------------------
@@ -132,3 +132,8 @@ function create_graph()
     end
     return graph
 end
+
+## TODO:
+## WRITE: multigraph module, integrating with LightGraphs
+## REF:  https://github.com/chelseas/Multigraphs.jl/blob/master/src/multigraph_core.jl
+#-------------------------------------------------------------------------------------
