@@ -38,10 +38,8 @@ function build_dccc_ab(generators, buses, lines, farms)
     ## Quadratic Cost
     ##---------------
     @variable(m, r_uncert >= 0)
-    #@variable(m, rm_uncert >= 0)
     @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(r_uncert, 0.5, C_rt * αp * s, C_rt2  * αm * s)) in RotatedSecondOrderCone())
-    #@constraint(m, vec(vcat(rm_uncert, 0.5,  C_rt  * αm * s)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(r_uncert, 0.5, C_rt * αp * s, C_rt  * αm * s)) in RotatedSecondOrderCone())
     @constraint(m, vcat(r_sched, 0.5, C_rt * p) in RotatedSecondOrderCone())
     @expression(m, quad_cost, r_sched + r_uncert)
 

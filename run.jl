@@ -95,11 +95,11 @@ B_node = A' * B
 
 d = [b.d_P for b in buses]
 
+## Generation costs
+#------------------
 c_vec = [g.cost * 0.1 for g in generators]
-c_vec_sq = [sqrt(g.cost * 0.1) for g in generators]
 C_mat = diagm(0 => c_vec)
-C_rt = sqrt(C_mat) #^ (-1/2)
-C_rt2 = diagm(0 => c_vec_sq)
+C_rt = sqrt(C_mat)
 
 ## MODELS, SYMMETRIC
 ##------------------
@@ -134,7 +134,7 @@ C_rt2 = diagm(0 => c_vec_sq)
     value.(m_dccc_n2n[:r_sched])
     value.(m_dccc_n2n[:r_uncert])
     sum(value.(m_dccc_n2n[:p_uncert]))
-    alpha = value.(m_dccc_n2n[:α])
+    a_n2n = value.(m_dccc_n2n[:α]) * ones(n_farms)
     sum(value.(m_dccc_n2n[:α]))
     λ_n2n  = -dual.(m_dccc_n2n[:mc])
     χ = -dual.(m_dccc_n2n[:χ])
@@ -177,6 +177,8 @@ C_rt2 = diagm(0 => c_vec_sq)
     λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
     χp = -dual.(m_dccc_n2n_ab[:χp])
     χm = -dual.(m_dccc_n2n_ab[:χm])
+    ap_n2n = value.(m_dccc_n2n_ab[:αp]) * ones(n_farms)
+    am_n2n = value.(m_dccc_n2n_ab[:αm]) * ones(n_farms)
 
 ## EXPORT
 ##-------
@@ -208,10 +210,10 @@ body = hcat(node_idx, l1, l3, l2)
 
 TexTable("texTables//prices.txt", headings1, headings2, body, types)
 
-headings1 = ["Model", "sym", "asym", "asym"]
-headings2 = ["\$i\$", "\$\\alpha_{i}\$", "\$\\alpha^{-}_{i}\$", "\$\\alpha^{+}_{i}\$"]
-types = [Int, Float64, Float64, Float64]
-body = hcat(gens, a_s, ap, am)
+headings1 = ["Model", "sym", "asym", "asym", "sym", "asym", "asym"]
+headings2 = ["\$i\$", "\$\\alpha_{i}\$", "\$\\alpha^{-}_{i}\$", "\$\\alpha^{+}_{i}\$", "\$e^{T}A_{i}\$", "\$e^{T}A^{-}_{i}\$", "\$e^{T}A^{+}_{i}\$"]
+types = [Int, Float64, Float64, Float64, Float64, Float64, Float64]
+body = hcat(gens, a_s, ap, am, a_n2n, ap_n2n, am_n2n)
 
 TexTable("texTables//alphas.txt", headings1, headings2, body, types)
 

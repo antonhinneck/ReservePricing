@@ -139,3 +139,6 @@ plot(u_buses, χm, color = "lightgreen", mec = "green", mfc = "green", label = "
 
 legend(loc = "lower left",fancybox=false, edgecolor="black")
 savefig(string("plots//chi.pdf"), format = :pdf)
+
+## Participation Factors
+##----------------------

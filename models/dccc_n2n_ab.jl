@@ -24,8 +24,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].s_max)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].s_max)
 
-    @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
-    @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
+    @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1/n_farms)
+    @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1/n_farms)
 
     @variable(m, pp_uncert[1:n_generators] >= 0)
     @variable(m, pm_uncert[1:n_generators] >= 0)
