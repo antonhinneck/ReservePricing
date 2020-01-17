@@ -95,7 +95,7 @@ d = [b.d_P for b in buses]
 
 ## Generation costs
 #------------------
-#c = [g.cost for g in generators]
+c = [g.cost/100 for g in generators]
 c_vec = [0.1 * g.cost for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
@@ -116,7 +116,7 @@ C_rt = sqrt(C_mat)
     z1_q = value.(m_dccc[:r_sched])
     z1_l = value.(m_dccc[:r_lin])
 
-    a_s = value.(m_dccc[:α])
+    a_s = value.(m_dccc[:α]) * sum(σ)
     λ  = -dual.(m_dccc[:mc])
     γ = -dual.(m_dccc[:γ])
 
@@ -134,7 +134,7 @@ C_rt = sqrt(C_mat)
     z2_q = value.(m_dccc_n2n[:r_sched])
     z2_l = value.(m_dccc_n2n[:r_lin])
     sum(value.(m_dccc_n2n[:p_uncert]))
-    a_n2n = value.(m_dccc_n2n[:α]) * ones(n_farms)
+    a_n2n = value.(m_dccc_n2n[:α]) * σ_vec
     sum(value.(m_dccc_n2n[:α]))
     λ_n2n  = -dual.(m_dccc_n2n[:mc])
     χ = -dual.(m_dccc_n2n[:χ])
@@ -153,8 +153,8 @@ C_rt = sqrt(C_mat)
     z3_u = value.(m_dccc_ab[:r_uncert])
     z3_q = value.(m_dccc_ab[:r_sched])
     z3_l = value.(m_dccc_ab[:r_lin])
-    ap = value.(m_dccc_ab[:αp])
-    am = value.(m_dccc_ab[:αm])
+    ap = value.(m_dccc_ab[:αp]) * sum(σ)
+    am = value.(m_dccc_ab[:αm]) * sum(σ)
     λ_ab  = -dual.(m_dccc_ab[:mc])
 
     γp = -dual.(m_dccc_ab[:γp])
@@ -177,8 +177,8 @@ C_rt = sqrt(C_mat)
     λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
     χp = -dual.(m_dccc_n2n_ab[:χp])
     χm = -dual.(m_dccc_n2n_ab[:χm])
-    ap_n2n = value.(m_dccc_n2n_ab[:αp]) * ones(n_farms)
-    am_n2n = value.(m_dccc_n2n_ab[:αm]) * ones(n_farms)
+    ap_n2n = value.(m_dccc_n2n_ab[:αp]) * σ_vec
+    am_n2n = value.(m_dccc_n2n_ab[:αm]) * σ_vec
 
     sum(value.(m_dccc_n2n_ab[:pp_uncert]))
     sum(value.(m_dccc_n2n_ab[:pm_uncert]))

@@ -104,6 +104,14 @@ function write_vec(arr::Array{T,1} where T <: Any, name::String, digits = 2)
     close(io)
 end
 
+function sq(arr::Array{T, 1} where T <: Real)
+    out = Vector{Float64}()
+    for i in arr
+        push!(out, i^2)
+    end
+    return out
+end
+
 ## GRAPH FUNCTIONS
 ##----------------------------
 ## IMPORT: Types and functions
