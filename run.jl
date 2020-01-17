@@ -65,9 +65,7 @@ s_rt = s_sq^(1/2)
 s = sum(s_rt)
 
 Σ = diagm(0 => (σ_vec))
-#Σ = diagm(0 => (σ_vec.^2))
 Σ_sq = sqrt(Σ)
-s_vec = [s * s for i in 1:n_generators]
 
 # Define B marix
 # Code (based on how .index value is determined) does not work for an arbitrary pglib dataset.
@@ -97,8 +95,8 @@ d = [b.d_P for b in buses]
 
 ## Generation costs
 #------------------
-c = [g.cost / 100 for g in generators]
-c_vec = [g.cost * 0.1 for g in generators]
+#c = [g.cost for g in generators]
+c_vec = [0.1 * g.cost for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
 
@@ -203,7 +201,7 @@ end
 
 l1 = Vector{Float64}()
 l2 = Vector{Float64}()
-l3= Vector{Float64}()
+l3 = Vector{Float64}()
 l4 = Vector{Float64}()
 node_idx = Vector{Int64}()
 

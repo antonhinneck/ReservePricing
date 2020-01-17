@@ -35,13 +35,13 @@ function build_dccc(generators, buses, lines, farms)
     @variable(m, r_lin >= 0)
     @expression(m, linear_cost, sum(p[i] * generators[i].cost for i in 1:n_generators))
     @constraint(m, r_lin == linear_cost)
-    
+
     ## Quadratic Cost
     ##---------------
     @variable(m, r_uncert >= 0)
     @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * α * s)) in RotatedSecondOrderCone())
-    #print(C_rt' * α * s)
+    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * α * sqrt(s))) in RotatedSecondOrderCone())
+
     @constraint(m, vcat(r_sched, 0.5, C_rt * p) in RotatedSecondOrderCone())
     @expression(m, quad_cost, r_sched + r_uncert)
 
