@@ -101,11 +101,8 @@ function write_vec(arr::Array{T,1} where T <: Any, name::String, digits = 2)
         write(io, str)
         write(io, "&")
     end
-
+    close(io)
 end
-
-a = [i for i in 1:10]
-
 
 ## GRAPH FUNCTIONS
 ##----------------------------
