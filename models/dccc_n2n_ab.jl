@@ -24,8 +24,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].s_max)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].s_max)
 
-    @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1/n_farms)
-    @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1/n_farms)
+    @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
+    @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
 
     @variable(m, pp_uncert[1:n_generators] >= 0)
     @variable(m, pm_uncert[1:n_generators] >= 0)
@@ -39,7 +39,9 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
 
     ## Linear Cost
     ##------------
+    @variable(m, r_lin >= 0)
     @expression(m, linear_cost, sum(p[i] * generators[i].cost for i in 1:n_generators))
+    @constraint(m, r_lin == linear_cost)
 
     ## Quadratic Cost
     ##---------------
@@ -51,7 +53,7 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
 
     ## Objective
     ##----------
-    @objective(m, Min, linear_cost + quad_cost)
+    @objective(m, Min, r_lin + quad_cost)
 
     return m
 

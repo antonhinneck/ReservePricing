@@ -114,8 +114,9 @@ C_rt = sqrt(C_mat)
     optimize!(m_dccc)
     z1 = objective_value(m_dccc)
 
-    value.(m_dccc[:r_uncert])
-    value.(m_dccc[:r_sched])
+    z1_u = value.(m_dccc[:r_uncert])
+    z1_q = value.(m_dccc[:r_sched])
+    z1_l = value.(m_dccc[:r_lin])
 
     a_s = value.(m_dccc[:α])
     λ  = -dual.(m_dccc[:mc])
@@ -125,15 +126,15 @@ C_rt = sqrt(C_mat)
     ##--------------
 
     include("models/dccc_n2n.jl")
-    z2 = m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
+    m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 
     optimize!(m_dccc_n2n)
-    objective_value(m_dccc_n2n)
+    z2 = objective_value(m_dccc_n2n)
     termination_status(m_dccc_n2n)
 
-    value.(m_dccc_n2n[:p_uncert])
-    value.(m_dccc_n2n[:r_sched])
-    value.(m_dccc_n2n[:r_uncert])
+    z2_u = value.(m_dccc_n2n[:r_uncert])
+    z2_q = value.(m_dccc_n2n[:r_sched])
+    z2_l = value.(m_dccc_n2n[:r_lin])
     sum(value.(m_dccc_n2n[:p_uncert]))
     a_n2n = value.(m_dccc_n2n[:α]) * ones(n_farms)
     sum(value.(m_dccc_n2n[:α]))
@@ -151,12 +152,11 @@ C_rt = sqrt(C_mat)
     optimize!(m_dccc_ab)
     z3 = objective_value(m_dccc_ab)
 
-    #value.(m_dccc_ab[:p_uncert])
-    value.(m_dccc_ab[:r_sched])
-    value.(m_dccc_ab[:r_uncert])
+    z3_u = value.(m_dccc_ab[:r_uncert])
+    z3_q = value.(m_dccc_ab[:r_sched])
+    z3_l = value.(m_dccc_ab[:r_lin])
     ap = value.(m_dccc_ab[:αp])
     am = value.(m_dccc_ab[:αm])
-    #value.(m_dccc_ab[:r_uncert])
     λ_ab  = -dual.(m_dccc_ab[:mc])
 
     γp = -dual.(m_dccc_ab[:γp])
@@ -172,17 +172,28 @@ C_rt = sqrt(C_mat)
     optimize!(m_dccc_n2n_ab)
     z4 = objective_value(m_dccc_n2n_ab)
     termination_status(m_dccc_n2n_ab)
-    sum(value.(m_dccc_n2n_ab[:pp_uncert]))
-    sum(value.(m_dccc_n2n_ab[:pm_uncert]))
-    value.(m_dccc_n2n_ab[:r_uncert])
+
+    z4_u = value.(m_dccc_n2n_ab[:r_uncert])
+    z4_q = value.(m_dccc_n2n_ab[:r_sched])
+    z4_l = value.(m_dccc_n2n_ab[:r_lin])
     λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
     χp = -dual.(m_dccc_n2n_ab[:χp])
     χm = -dual.(m_dccc_n2n_ab[:χm])
     ap_n2n = value.(m_dccc_n2n_ab[:αp]) * ones(n_farms)
     am_n2n = value.(m_dccc_n2n_ab[:αm]) * ones(n_farms)
 
+    sum(value.(m_dccc_n2n_ab[:pp_uncert]))
+    sum(value.(m_dccc_n2n_ab[:pm_uncert]))
+
 ## EXPORT
 ##-------
+
+headings1 = ["Model", "\$z^{*}\$", "\$z^{*}_{q}\$", "\$z^{*}_{u}\$", "\$z^{*}_{l}\$"]
+headings2 = ["","","","", ""]
+types = [Int64, Float64, Float64, Float64, Float64]
+body = hcat([1, 2, 3, 4], [z1, z2, z3, z4], [z1_q, z2_q, z3_q, z4_q], [z1_u, z2_u, z3_u, z4_u], [z1_l, z2_l, z3_l, z4_l])
+
+TexTable("texTables//objective.txt", headings1, headings2, body, types, 2)
 
 gens = Vector{Int64}()
 

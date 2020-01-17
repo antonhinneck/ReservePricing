@@ -32,8 +32,10 @@ function build_dccc(generators, buses, lines, farms)
 
     ## Linear Cost
     ##------------
+    @variable(m, r_lin >= 0)
     @expression(m, linear_cost, sum(p[i] * generators[i].cost for i in 1:n_generators))
-
+    @constraint(m, r_lin == linear_cost)
+    
     ## Quadratic Cost
     ##---------------
     @variable(m, r_uncert >= 0)
@@ -45,7 +47,7 @@ function build_dccc(generators, buses, lines, farms)
 
     ## Objective
     ##----------
-    @objective(m, Min, linear_cost + quad_cost)
+    @objective(m, Min, r_lin + quad_cost)
 
     return m
 
