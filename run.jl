@@ -97,6 +97,7 @@ d = [b.d_P for b in buses]
 
 ## Generation costs
 #------------------
+c = [g.cost / 100 for g in generators]
 c_vec = [g.cost * 0.1 for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
@@ -111,7 +112,7 @@ C_rt = sqrt(C_mat)
     m_dccc = build_dccc(generators, buses, lines, farms)
 
     optimize!(m_dccc)
-    objective_value(m_dccc)
+    z1 = objective_value(m_dccc)
 
     value.(m_dccc[:r_uncert])
     value.(m_dccc[:r_sched])
@@ -124,7 +125,7 @@ C_rt = sqrt(C_mat)
     ##--------------
 
     include("models/dccc_n2n.jl")
-    m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
+    z2 = m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 
     optimize!(m_dccc_n2n)
     objective_value(m_dccc_n2n)
@@ -148,7 +149,7 @@ C_rt = sqrt(C_mat)
     include("models/dccc_ab.jl")
     m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
     optimize!(m_dccc_ab)
-    objective_value(m_dccc_ab)
+    z3 = objective_value(m_dccc_ab)
 
     #value.(m_dccc_ab[:p_uncert])
     value.(m_dccc_ab[:r_sched])
@@ -169,7 +170,7 @@ C_rt = sqrt(C_mat)
     include("models/dccc_n2n_ab.jl")
     m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
     optimize!(m_dccc_n2n_ab)
-    objective_value(m_dccc_n2n_ab)
+    z4 = objective_value(m_dccc_n2n_ab)
     termination_status(m_dccc_n2n_ab)
     sum(value.(m_dccc_n2n_ab[:pp_uncert]))
     sum(value.(m_dccc_n2n_ab[:pm_uncert]))
@@ -210,10 +211,10 @@ body = hcat(node_idx, l1, l3, l2)
 
 TexTable("texTables//prices.txt", headings1, headings2, body, types)
 
-headings1 = ["Model", "sym", "asym", "asym", "sym", "asym", "asym"]
-headings2 = ["\$i\$", "\$\\alpha_{i}\$", "\$\\alpha^{-}_{i}\$", "\$\\alpha^{+}_{i}\$", "\$e^{T}A_{i}\$", "\$e^{T}A^{-}_{i}\$", "\$e^{T}A^{+}_{i}\$"]
-types = [Int, Float64, Float64, Float64, Float64, Float64, Float64]
-body = hcat(gens, a_s, ap, am, a_n2n, ap_n2n, am_n2n)
+headings1 = ["","Model", "sym", "asym", "asym", "sym", "asym", "asym"]
+headings2 = ["\$i\$", "\$c_{i}\$", "\$\\alpha_{i}\$", "\$\\alpha^{-}_{i}\$", "\$\\alpha^{+}_{i}\$", "\$e^{T}A_{i}\$", "\$e^{T}A^{-}_{i}\$", "\$e^{T}A^{+}_{i}\$"]
+types = [Int, Float64, Float64, Float64, Float64, Float64, Float64, Float64]
+body = hcat(gens, c, a_s, ap, am, a_n2n, ap_n2n, am_n2n)
 
 TexTable("texTables//alphas.txt", headings1, headings2, body, types)
 

@@ -85,6 +85,28 @@ function TexTable(name::String, headings1::Vector{String}, headings2::Vector{Str
 
 end
 
+function write_vec(arr::Array{T,1} where T <: Any, name::String, digits = 2)
+
+    name = string("texTables//", name)
+    io = open(name, "w")
+    for e in arr
+        str = ""
+        if typeof(e) <: Real
+            str = string(round(e, digits = digits))
+        elseif typeof(e) <: Integer
+            str = string(e)
+        else
+            str = string(e)
+        end
+        write(io, str)
+        write(io, "&")
+    end
+
+end
+
+a = [i for i in 1:10]
+
+
 ## GRAPH FUNCTIONS
 ##----------------------------
 ## IMPORT: Types and functions
