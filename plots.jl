@@ -111,7 +111,7 @@ ylabel("\$\\gamma\$")
 ##xlim(left=-5,right=5)
 #x = [0.01 * i for i in -50000:50000]
 
-plot(["sym", "asym -", "asym +"], [γ, γm, γp], color = "lightblue", mec = "blue", mfc = "blue", label = "symmetric", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
+plot(["Model 1", "asym -", "asym +"], [γ, γm, γp], color = "lightblue", mec = "blue", mfc = "blue", label = "symmetric", lw = 0.8, ls = "dashed", marker = "D", ms = 2.5, mew = 1)
 
 savefig(string("plots//gamma.pdf"), format = :pdf)
 
@@ -134,10 +134,10 @@ ylabel("\$\\chi^{(\\pm)}_{u}\$")
 ##xlim(left=-5,right=5)
 #x = [0.01 * i for i in -50000:50000]
 
-plot(u_buses, σ, color = "gray", mec = "black", mfc = "black", label = "\$\\sigma_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
-plot(u_buses, χ, color = "navy", mec = "navy", mfc = "navy", label = "Model 2, \$\\chi_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
-plot(u_buses, χm, color = "teal", mec = "blue", mfc = "navy", label = "Model 4, \$\\chi^{-}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
-plot(u_buses, χp, color = "lightgreen", mec = "blue", mfc = "blue", label = "Model 4, \$\\chi^{+}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
+plot(u_buses, σ, color = "black", mec = "black", mfc = "black", label = "\$\\sigma_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
+plot(u_buses, χ, color = "navy", mec = "navy", mfc = "white", label = "Model 1, \$\\chi_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
+plot(u_buses, χm, color = "teal", mec = "teal", mfc = "white", label = "Model 2, \$\\chi^{-}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
+plot(u_buses, χp, color = "lightgreen", mec = "lightgreen", mfc = "white", label = "Model 2, \$\\chi^{+}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
 
 legend(loc = "lower left", fancybox = false, edgecolor = "black")
 savefig(string("plots//chi.pdf"), format = :pdf)

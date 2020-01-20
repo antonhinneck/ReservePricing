@@ -27,6 +27,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
     @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
 
+    @constraint(m, a[u in 1:n_farms, i in 1:n_generators], αm[i, u] == αp[i, u])
+
     @variable(m, pp_uncert[1:n_generators] >= 0)
     @variable(m, pm_uncert[1:n_generators] >= 0)
     @expression(m, norm_up, αp * Σ_sq)
