@@ -118,28 +118,28 @@ savefig(string("plots//gamma.pdf"), format = :pdf)
 ## N2N
 ##----
 
-fig = figure(figsize=(8, 3))
+fig = figure(figsize=(8, 3.6))
 rc("font", family = "serif", style = "italic", size = 14)
 rc("text", usetex = true)
 rc("lines", linewidth = 1)
 
-ax = fig.add_axes([0.09,0.15,0.9,0.84])
+ax = fig.add_axes([0.0925,0.12,0.9,0.86])
 grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
 ax.tick_params(direction = "in", top = true, right = true, width = 1.4)
 
 ax.set_yscale("log")
 #ax.set_axisbelow(true)
 xlabel("\$u\$")
-ylabel("\$\\chi^{(\\pm)}_{u}\$")
+ylabel("\$\\chi^{(-)}_{u}\$")
 ##xlim(left=-5,right=5)
 #x = [0.01 * i for i in -50000:50000]
 
-plot(u_buses, σ, color = "black", mec = "black", mfc = "black", label = "\$\\sigma_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
-plot(u_buses, χ, color = "navy", mec = "navy", mfc = "white", label = "Model 1, \$\\chi_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
-plot(u_buses, χm, color = "teal", mec = "teal", mfc = "white", label = "Model 2, \$\\chi^{-}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
-plot(u_buses, χp, color = "lightgreen", mec = "lightgreen", mfc = "white", label = "Model 2, \$\\chi^{+}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
+plot(u_buses, σ, color = "black", mec = "black", mfc = "black", label = "\$\\sigma_{u}\$", lw = 1, ls = "dotted", marker = "D", ms = 3, mew = 1)
+plot(u_buses, χ, color = "navy", mec = "navy", mfc = "white", label = "Model 1, \$\\chi_{u}\$", lw = 2, ls = "dashed", marker = "D", ms = 4, mew = 2)
+plot(u_buses, χm, color = "orange", mec = "orange", mfc = "white", label = "Model 3, \$\\chi^{-}_{u}\$", lw = 1, ls = "solid", marker = "D", ms = 3, mew = 1)
+#plot(u_buses, χp, color = "lightgreen", mec = "lightgreen", mfc = "white", label = "Model 2, \$\\chi^{+}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
 
-legend(loc = "lower left", fancybox = false, edgecolor = "black")
+legend(loc = "center", fancybox = false, edgecolor = "black")
 savefig(string("plots//chi.pdf"), format = :pdf)
 
 ## Participation Factors

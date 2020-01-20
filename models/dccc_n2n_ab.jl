@@ -27,7 +27,7 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
     @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
 
-    @constraint(m, a[u in 1:n_farms, i in 1:n_generators], αm[i, u] == αp[i, u])
+    #@constraint(m, a[u in 1:n_farms, i in 1:n_generators], αm[i, u] == αp[i, u])
 
     @variable(m, pp_uncert[1:n_generators] >= 0)
     @variable(m, pm_uncert[1:n_generators] >= 0)
@@ -49,7 +49,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     ##---------------
     @variable(m, r_uncert >= 0)
     @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt' * pp_uncert, C_rt' * pm_uncert)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, r_uncert, C_rt' * pm_uncert * s)) in RotatedSecondOrderCone())
+    #@constraint(m, vec(vcat(0.5, r_uncert, C_rt' * pp_uncert, C_rt' * pm_uncert)) in RotatedSecondOrderCone())
     @constraint(m, vcat(0.5, r_sched, C_rt' * p) in RotatedSecondOrderCone())
     @expression(m, quad_cost, r_sched + r_uncert)
 

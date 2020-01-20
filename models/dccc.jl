@@ -40,8 +40,7 @@ function build_dccc(generators, buses, lines, farms)
     ##---------------
     @variable(m, r_uncert >= 0)
     @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * α * sqrt(s))) in RotatedSecondOrderCone())
-
+    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * α * s)) in RotatedSecondOrderCone())
     @constraint(m, vcat(r_sched, 0.5, C_rt * p) in RotatedSecondOrderCone())
     @expression(m, quad_cost, r_sched + r_uncert)
 
