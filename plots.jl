@@ -127,15 +127,17 @@ ax = fig.add_axes([0.09,0.15,0.9,0.84])
 grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
 ax.tick_params(direction = "in", top = true, right = true, width = 1.4)
 
+ax.set_yscale("log")
 #ax.set_axisbelow(true)
 xlabel("\$u\$")
 ylabel("\$\\chi^{(\\pm)}_{u}\$")
 ##xlim(left=-5,right=5)
 #x = [0.01 * i for i in -50000:50000]
 
-plot(u_buses, χm, color = "teal", mec = "navy", mfc = "navy", label = "Model 4, \$\\chi^{-}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
+plot(u_buses, σ, color = "gray", mec = "black", mfc = "black", label = "\$\\sigma_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
+plot(u_buses, χ, color = "navy", mec = "navy", mfc = "navy", label = "Model 2, \$\\chi_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
+plot(u_buses, χm, color = "teal", mec = "blue", mfc = "navy", label = "Model 4, \$\\chi^{-}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
 plot(u_buses, χp, color = "lightgreen", mec = "blue", mfc = "blue", label = "Model 4, \$\\chi^{+}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
-plot(u_buses, χ, color = "gray", mec = "black", mfc = "black", label = "Model 2, \$\\chi_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1)
 
 legend(loc = "lower left", fancybox = false, edgecolor = "black")
 savefig(string("plots//chi.pdf"), format = :pdf)

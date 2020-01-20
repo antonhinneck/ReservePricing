@@ -34,8 +34,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, uncert_gen1[i in 1:n_generators], vec(vcat(pp_uncert[i], norm_up[i, :])) in SecondOrderCone())
     @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i, :])) in SecondOrderCone())
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + z * pp_uncert[i] <= generators[i].g_max)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * pm_uncert[i] <= 0)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + z * pm_uncert[i] <= generators[i].g_max)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * pp_uncert[i] <= 0)
 
     ## Linear Cost
     ##------------

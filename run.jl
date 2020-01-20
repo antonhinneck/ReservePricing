@@ -116,7 +116,7 @@ C_rt = sqrt(C_mat)
     z1_q = value.(m_dccc[:r_sched])
     z1_l = value.(m_dccc[:r_lin])
 
-    a_s = value.(m_dccc[:α]) * sum(σ)
+    a_s = value.(m_dccc[:α]) * sum(σ_vec)
     λ  = -dual.(m_dccc[:mc])
     γ = -dual.(m_dccc[:γ])
 
@@ -137,7 +137,7 @@ C_rt = sqrt(C_mat)
     a_n2n = value.(m_dccc_n2n[:α]) * σ_vec
     sum(value.(m_dccc_n2n[:α]))
     λ_n2n  = -dual.(m_dccc_n2n[:mc])
-    χ = -dual.(m_dccc_n2n[:χ])
+    χ = dual.(m_dccc_n2n[:χ])
 
 ## MODELS, ASYMMETRIC
 ##-------------------
@@ -153,8 +153,8 @@ C_rt = sqrt(C_mat)
     z3_u = value.(m_dccc_ab[:r_uncert])
     z3_q = value.(m_dccc_ab[:r_sched])
     z3_l = value.(m_dccc_ab[:r_lin])
-    ap = value.(m_dccc_ab[:αp]) * sum(σ)
-    am = value.(m_dccc_ab[:αm]) * sum(σ)
+    ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
+    am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
     λ_ab  = -dual.(m_dccc_ab[:mc])
 
     γp = -dual.(m_dccc_ab[:γp])
@@ -175,8 +175,8 @@ C_rt = sqrt(C_mat)
     z4_q = value.(m_dccc_n2n_ab[:r_sched])
     z4_l = value.(m_dccc_n2n_ab[:r_lin])
     λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
-    χp = -dual.(m_dccc_n2n_ab[:χp])
-    χm = -dual.(m_dccc_n2n_ab[:χm])
+    χp = dual.(m_dccc_n2n_ab[:χp])
+    χm = dual.(m_dccc_n2n_ab[:χm])
     ap_n2n = value.(m_dccc_n2n_ab[:αp]) * σ_vec
     am_n2n = value.(m_dccc_n2n_ab[:αm]) * σ_vec
 
