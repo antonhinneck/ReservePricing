@@ -46,12 +46,12 @@ for i in 1:length(mg)
 
     j = length(mg) - (i - 1)
     #plot(u_buses, scenarios_sigma[j], color = [mg[j].r,mg[j].g,mg[j].b, 1.0], mec = [mg[j].r,mg[j].g,mg[j].b, 1.0], mfc = "white", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1) #label = "\$\\chi_{u}\$, \$$(scalings[i])\\sigma_{u}\$",
-    plot(u_buses, scenarios_chi[i], color = [mg[j].r,mg[j].g,mg[j].b, 1.0], mec = [mg[j].r,mg[j].g,mg[j].b, 1.0], mfc = "white", label = "\$$(scalings[i])\\sigma_{u}\$, \$\\chi^{-}_u\$", lw = 1, ls = "dotted", marker = "D", ms = 3, mew = 1)
+    plot(u_buses, scenarios_chi[i], color = [mg[j].r,mg[j].g,mg[j].b, 1.0], mec = [mg[j].r,mg[j].g,mg[j].b, 1.0], mfc = "white", label = "\$$(scalings[i])\\mu_{u}, \\frac{1}{$(scalings[i])}\\bar{P}_{i}\$, \$\\chi^{-}_u\$", lw = 1, ls = "dotted", marker = "D", ms = 3, mew = 1)
 
 end
 
 legend(loc = "upper left", fancybox = false, edgecolor = "black")
-savefig(string("plots_scenarios_pen//s_chi.pdf"), format = :pdf)
+savefig(string("plots_scenarios_pen//sp_chi.pdf"), format = :pdf)
 
 fig = figure(figsize=(4, 3.6))
 rc("font", family = "serif", style = "italic", size = 14)
@@ -75,7 +75,7 @@ for i in 1:length(mg)
 end
 
 #legend(loc = "upper left", fancybox = false, edgecolor = "black")
-savefig(string("plots_scenarios_pen//s_zu.pdf"), format = :pdf)
+savefig(string("plots_scenarios_pen//sp_zu.pdf"), format = :pdf)
 
 fig = figure(figsize=(4, 3.6))
 rc("font", family = "serif", style = "italic", size = 14)
@@ -99,4 +99,4 @@ for i in 1:length(mg)
 end
 
 #legend(loc = "upper left", fancybox = false, edgecolor = "black")
-savefig(string("plots_scenarios_pen//s_z.pdf"), format = :pdf)
+savefig(string("plots_scenarios_pen//sp_z.pdf"), format = :pdf)

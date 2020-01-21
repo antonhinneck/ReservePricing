@@ -240,7 +240,7 @@ scenarios_zu = Vector{Float64}()
 scenarios_z = Vector{Float64}()
 scenarios_sxs = Vector{Float64}()
 
-scalings = [i for i in range(1, 1.5, step = 0.1)]
+scalings = [i for i in range(1, 1.4, step = 0.05)]
 #scalings = [1.01]
 scenarios = [string(scalings[i]) for i in 1:length(scalings)]
 
