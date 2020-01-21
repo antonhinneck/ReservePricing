@@ -12,20 +12,28 @@ include("models/dccc.jl")
 datadir = "data/ieee118"
 buses, lines, generators = load_network(datadir)
 
+function update_generators(scaling_cap::Float64, datadir = "data/ieee118")
+    buses, lines, generators = load_network(datadir)
+    for g in generators
+        g.g_max = g.g_max = scaling_cap
+    end
+    return buses, lines, generators
+end
+
 x_vec = [l.x for l in lines]
 X = diagm(0 => x_vec)
 
 wind_buses = [3,8,11,20,24,26,31,38,43,49,53]
 wind_cpcty = [70.0, 147.0, 102.0, 105.0, 113.0, 84.0, 59.0, 250.0, 118.0, 76.0, 72.0]
 
-function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}, scaling = 1)
+function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scaling_sigma = 1.0, scaling_cap = 1.0)
 
     @assert length(buses) == length(capacity)
     farms = Vector{Farm}()
     nf = length(buses)
 
     for i in 1:nf
-        push!(farms,  Farm(capacity[i] / 100, scaling * capacity[i] / 10 / 100, buses[i]))
+        push!(farms,  Farm(scaling_cap * capacity[i] / 100, scaling_sigma * scaling_cap * capacity[i] / 10 / 100, buses[i]))
     end
 
     σ_vec = [i.σ for i in farms]
@@ -220,7 +228,46 @@ for i in scalings
 
 end
 
-include("plots_scenarios.jl")
+include("plots_scenarios_sigma.jl")
+
+## Scenarios pen scaling
+##----------------------
+
+scenarios_chi = Vector{Vector{Float64}}()
+scenarios_sigma = Vector{Vector{Float64}}()
+scenarios_zu = Vector{Float64}()
+scenarios_z = Vector{Float64}()
+scenarios_sxs = Vector{Float64}()
+
+scalings = [i for i in range(1, 3, step = 0.5)]
+
+
+for i in scalings
+
+    global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, scaling_sigma = 1.0, scaling_cap = i)
+    global buses, lines, generators = update_generators(1/i)
+
+    include("models/dccc_n2n_ab.jl")
+    s_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
+    optimize!(s_m_dccc_n2n_ab)
+
+    z = objective_value(s_m_dccc_n2n_ab)
+
+    s_zu = value.(s_m_dccc_n2n_ab[:r_uncert])
+    s_χm = dual.(s_m_dccc_n2n_ab[:χm])
+
+    σ_vec = [i.σ for i in scenario_farms]
+    s_sxs = sum(σ_vec)
+
+    push!(scenarios_chi, s_χm)
+    push!(scenarios_sigma, σ_vec)
+    push!(scenarios_zu, s_zu)
+    push!(scenarios_z, z)
+    push!(scenarios_sxs, s_sxs)
+
+end
+
+include("plots_scenarios_pen.jl")
 
 ## EXPORT
 ##-------
