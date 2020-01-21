@@ -15,7 +15,7 @@ buses, lines, generators = load_network(datadir)
 function update_generators(scaling_cap::Float64, datadir = "data/ieee118")
     buses, lines, generators = load_network(datadir)
     for g in generators
-        g.g_max = g.g_max = scaling_cap
+        g.g_max = g.g_max * scaling_cap
     end
     return buses, lines, generators
 end
@@ -31,9 +31,10 @@ function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scal
     @assert length(buses) == length(capacity)
     farms = Vector{Farm}()
     nf = length(buses)
+    capacity = capacity * scaling_cap
 
     for i in 1:nf
-        push!(farms,  Farm(scaling_cap * capacity[i] / 100, scaling_sigma * scaling_cap * capacity[i] / 10 / 100, buses[i]))
+        push!(farms,  Farm(capacity[i] / 100, scaling_sigma * capacity[i] / 10 / 100, buses[i]))
     end
 
     σ_vec = [i.σ for i in farms]
@@ -239,31 +240,33 @@ scenarios_zu = Vector{Float64}()
 scenarios_z = Vector{Float64}()
 scenarios_sxs = Vector{Float64}()
 
-scalings = [i for i in range(1, 3, step = 0.5)]
-
+scalings = [i for i in range(1, 1.5, step = 0.1)]
+#scalings = [1.01]
+scenarios = [string(scalings[i]) for i in 1:length(scalings)]
 
 for i in scalings
 
     global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, scaling_sigma = 1.0, scaling_cap = i)
+
     global buses, lines, generators = update_generators(1/i)
 
     include("models/dccc_n2n_ab.jl")
-    s_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
-    optimize!(s_m_dccc_n2n_ab)
+    sp_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
+    optimize!(sp_m_dccc_n2n_ab)
 
-    z = objective_value(s_m_dccc_n2n_ab)
+    zp = objective_value(sp_m_dccc_n2n_ab)
 
-    s_zu = value.(s_m_dccc_n2n_ab[:r_uncert])
-    s_χm = dual.(s_m_dccc_n2n_ab[:χm])
+    sp_zu = value.(sp_m_dccc_n2n_ab[:r_uncert])
+    sp_χm = dual.(sp_m_dccc_n2n_ab[:χm])
 
     σ_vec = [i.σ for i in scenario_farms]
-    s_sxs = sum(σ_vec)
+    sp_sxs = sum(σ_vec)
 
-    push!(scenarios_chi, s_χm)
+    push!(scenarios_chi, sp_χm)
     push!(scenarios_sigma, σ_vec)
-    push!(scenarios_zu, s_zu)
-    push!(scenarios_z, z)
-    push!(scenarios_sxs, s_sxs)
+    push!(scenarios_zu, sp_zu)
+    push!(scenarios_z, zp)
+    push!(scenarios_sxs, sp_sxs)
 
 end
 

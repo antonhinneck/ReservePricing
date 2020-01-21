@@ -19,7 +19,6 @@ function gradient(start::RGBA, stop::RGBA, n_el::T where T <: Integer)
     return grad
 end
 
-scenarios = [string(scalings[i]) for i in 1:length(scalings)]
 mg = gradient(RGBA(15 / 255, 25 / 255, 120 / 255, 1.0), RGBA(0 / 255, 255 / 255, 80 / 255, 1.0), length(scalings))
 
 g_rgba = Vector{Tuple{Float64, Float64, Float64, Float64}}()
@@ -46,8 +45,8 @@ ylabel("\$\\chi^{(-)}_{u}\$")
 for i in 1:length(mg)
 
     j = length(mg) - (i - 1)
-    plot(u_buses, scenarios_sigma[j], color = [mg[j].r,mg[j].g,mg[j].b, 1.0], mec = [mg[j].r,mg[j].g,mg[j].b, 1.0], mfc = "white", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1) #label = "\$\\chi_{u}\$, \$$(scalings[i])\\sigma_{u}\$",
-    plot(u_buses, scenarios_chi[j], color = [mg[j].r,mg[j].g,mg[j].b, 1.0], mec = [mg[j].r,mg[j].g,mg[j].b, 1.0], mfc = "white", label = "\$$(scalings[i])\\sigma_{u}\$, \$\\chi^{-}_u\$", lw = 1, ls = "dotted", marker = "D", ms = 3, mew = 1)
+    #plot(u_buses, scenarios_sigma[j], color = [mg[j].r,mg[j].g,mg[j].b, 1.0], mec = [mg[j].r,mg[j].g,mg[j].b, 1.0], mfc = "white", lw = 1, ls = "dashed", marker = "D", ms = 3, mew = 1) #label = "\$\\chi_{u}\$, \$$(scalings[i])\\sigma_{u}\$",
+    plot(u_buses, scenarios_chi[i], color = [mg[j].r,mg[j].g,mg[j].b, 1.0], mec = [mg[j].r,mg[j].g,mg[j].b, 1.0], mfc = "white", label = "\$$(scalings[i])\\sigma_{u}\$, \$\\chi^{-}_u\$", lw = 1, ls = "dotted", marker = "D", ms = 3, mew = 1)
 
 end
 
