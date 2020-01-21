@@ -15,31 +15,36 @@ buses, lines, generators = load_network(datadir)
 x_vec = [l.x for l in lines]
 X = diagm(0 => x_vec)
 
+wind_buses = [3,8,11,20,24,26,31,38,43,49,53]
+wind_cpcty = [70.0, 147.0, 102.0, 105.0, 113.0, 84.0, 59.0, 250.0, 118.0, 76.0, 72.0]
 
-# Create unvertain generation (wind farms)
-wp = 1.25
-factor_σ =  1.25 * wp
+function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}, scaling = 1)
 
-farms = []
-#                 capa    mva                   var    mva  bus
-#                         Base                         Base
-push!(farms, Farm(70.0  / 100 * wp, factor_σ * 7.0  / 100, 3))
-push!(farms, Farm(147.0 / 100 * wp, factor_σ * 14.7 / 100, 8))
-push!(farms, Farm(102.0 / 100 * wp, factor_σ * 10.2 / 100, 11))
-push!(farms, Farm(105.0 / 100 * wp, factor_σ * 10.5 / 100, 20))
-push!(farms, Farm(113.0 / 100 * wp, factor_σ * 11.3 / 100, 24))
-push!(farms, Farm(84.0  / 100 * wp, factor_σ * 8.4  / 100, 26))
-push!(farms, Farm(59.0  / 100 * wp, factor_σ * 5.9  / 100, 31))
-push!(farms, Farm(250.0 / 100 * wp, factor_σ * 25.0 / 100, 38))
-push!(farms, Farm(118.0 / 100 * wp, factor_σ * 11.8 / 100, 43))
-push!(farms, Farm(76.0  / 100 * wp, factor_σ * 7.6  / 100, 49))
-push!(farms, Farm(72.0  / 100 * wp, factor_σ * 7.2  / 100, 53))
+    @assert length(buses) == length(capacity)
+    farms = Vector{Farm}()
+    nf = length(buses)
+
+    for i in 1:nf
+        push!(farms,  Farm(capacity[i] / 100, scaling * capacity[i] / 10 / 100, buses[i]))
+    end
+
+    σ_vec = [i.σ for i in farms]
+    s_sq = diagm(0 => (σ_vec.^2))
+    s_rt = s_sq^(1/2)
+    s = sum(s_rt)
+    Σ = diagm(0 => (σ_vec))
+    Σ_sq = sqrt(Σ)
+
+    return farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq
+end
+
+farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty)
 
 line_limits= [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
 
 thermalLimitscale = 0.8
 for i in 1:length(lines)
-    lines[i].s_max = 0.99*thermalLimitscale * line_limits[i]/100
+    lines[i].s_max = 0.99 * thermalLimitscale * line_limits[i] / 100
 end
 
 for (i,f) in enumerate(farms)
@@ -60,9 +65,6 @@ slack_bus = findall(b -> b.is_slack, buses)[1]
 z = quantile(Normal(0,1), 1-ϵ)
 p_U = [f.μ for f in farms]
 σ_vec = [f.σ for f in farms]
-s_sq = diagm(0 => (σ_vec.^2))
-s_rt = s_sq^(1/2)
-s = sum(s_rt)
 
 Σ = diagm(0 => (σ_vec))
 Σ_sq = sqrt(Σ)
@@ -183,6 +185,43 @@ C_rt = sqrt(C_mat)
     sum(value.(m_dccc_n2n_ab[:pp_uncert]))
     sum(value.(m_dccc_n2n_ab[:pm_uncert]))
 
+## SCENARIOS σ scaling
+##--------------------
+
+scenarios_chi = Vector{Vector{Float64}}()
+scenarios_sigma = Vector{Vector{Float64}}()
+scenarios_zu = Vector{Float64}()
+scenarios_z = Vector{Float64}()
+scenarios_sxs = Vector{Float64}()
+
+scalings = [i for i in range(1, 4, step = 0.5)]
+
+for i in scalings
+
+    global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, i)
+
+    include("models/dccc_n2n_ab.jl")
+    s_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
+    optimize!(s_m_dccc_n2n_ab)
+
+    z = objective_value(s_m_dccc_n2n_ab)
+
+    s_zu = value.(s_m_dccc_n2n_ab[:r_uncert])
+    s_χm = dual.(s_m_dccc_n2n_ab[:χm])
+
+    σ_vec = [i.σ for i in scenario_farms]
+    s_sxs = sum(σ_vec)
+
+    push!(scenarios_chi, s_χm)
+    push!(scenarios_sigma, σ_vec)
+    push!(scenarios_zu, s_zu)
+    push!(scenarios_z, z)
+    push!(scenarios_sxs, s_sxs)
+
+end
+
+include("plots_scenarios.jl")
+
 ## EXPORT
 ##-------
 
@@ -226,6 +265,25 @@ types = [Int, Float64, Float64, Float64, Float64, Float64, Float64, Float64]
 body = hcat(gens, c, a_s, ap, am, a_n2n, ap_n2n, am_n2n)
 
 TexTable("texTables//alphas.txt", headings1, headings2, body, types)
+
+s = 0
+ures_cap = 0
+gen_cap = 0
+for i in 1:n_farms
+    global ures_cap += farms[i].μ
+    global s+= farms[i].σ
+end
+for i in 1:n_generators
+    global gen_cap += generators[i].g_max
+end
+
+headings1 = ["scenario", "\$z^{*}_{\\epsilon_{g}}\$", "\$s^{2}\$", "\$\\sum_{u}\\mu_{u}\$", "\$\\sum_{i}\\bar{P}_{i}\$", "\$\\% uRES\$"]
+headings2 = ["","","","", "", ""]
+types = [Int64, Float64, Float64, Float64, Float64, Float64]
+body = hcat([1], [z], [s^2], [ures_cap], [gen_cap], [ures_cap / (ures_cap + gen_cap)])
+
+TexTable("texTables//system.txt", headings1, headings2, body, types, 2)
+
 
 #using DelimitedFiles
 #writedlm(string(@__DIR__,"\\alphas_sys.csv"), alphas_sys,",")

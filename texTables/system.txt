@@ -1,0 +1,11 @@
+\begin{table}
+\begin{tabular}{llllll}
+\toprule
+scenario&$z^{*}_{\epsilon_{g}}$&$s^{2}$&$\sum_{u}\mu_{u}$&$\sum_{i}\bar{P}_{i}$&$\% uRES$\\
+\midrule
+\multicolumn{6}{c}{}\\
+\toprule
+1&2.33&1.43&11.96&65.15&0.16\\
+\bottomrule
+\end{tabular}
+\end{table}
