@@ -50,6 +50,38 @@ rc("font", family = "serif", style = "italic", size = 14)
 rc("text", usetex = true)
 rc("lines", linewidth = 1)
 
+ax = fig.add_axes([0.09,0.15,0.9,0.825])
+grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
+ax.tick_params(direction="in",top=true,right=true,width=1.4)
+
+#ax.set_axisbelow(true)
+ax.set_yscale("log")
+xlabel("\$u\$")
+ylabel("\$\\pi\$")
+##xlim(left=-5,right=5)
+#x = [0.01 * i for i in -50000:50000]
+
+g = [γ for i in u_buses]
+gm = [γm for i in u_buses]
+gp = [γp for i in u_buses]
+b = [χ[i] / γ for i in 1:length(u_buses)]
+bm = [χm[i] / γm for i in 1:length(u_buses)]
+bp = [χp[i] / γp for i in 1:length(u_buses)]
+
+plot(u_buses, g, color = g_rgba[1], mec = g_rgba[1], mfc = "white", label = "\$\\pi^{\\alpha}\$", lw = 1, ls = "dashed", marker = "D", ms = 4, mew = 1.6)
+plot(u_buses, χ, color = g_rgba[3], mec = g_rgba[1], mfc = "white", label = "\$\\pi^{\\alpha}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 4, mew = 1.6)
+plot(u_buses, b, color = g_rgba[3], mec = g_rgba[1], mfc = "white", label = "\$\\beta_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 4, mew = 1.6)
+
+plot(u_buses, σ_vec, color = g_rgba[5], mec = g_rgba[5], mfc = "white", label = "\$\\pi^{\\alpha}\$", lw = 1, ls = "dashed", marker = "D", ms = 4, mew = 1.6)
+
+legend(loc = "upper right",fancybox=false, edgecolor="black")
+savefig(string("plots//beta_u.pdf"), format = :pdf)
+
+fig = figure(figsize=(8, 3))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
+
 ## SYSTEM-WIDE AND N2N
 ##--------------------
 

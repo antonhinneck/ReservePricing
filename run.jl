@@ -3,6 +3,7 @@ using CSV
 using LinearAlgebra, Distributions
 using JuMP
 using Mosek, MosekTools
+using PyPlot, Colors
 
 cd(@__DIR__)
 include("code_jl/input_dcopf.jl")
@@ -38,8 +39,8 @@ function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scal
     end
 
     σ_vec = [i.σ for i in farms]
-    s_sq = diagm(0 => (σ_vec.^2))
-    s_rt = s_sq^(1/2)
+    #s_sq = diagm(0 => (σ_vec.^2))
+    s_rt = diagm(0 => (σ_vec))
     s = sum(s_rt)
     Σ = diagm(0 => (σ_vec))
     Σ_sq = sqrt(Σ)
@@ -48,6 +49,7 @@ function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scal
 end
 
 farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty)
+u_buses = [f.bus for f in farms]
 
 line_limits= [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
 
@@ -67,8 +69,8 @@ n_farms = size(farms, 1)
 
 slack_bus = findall(b -> b.is_slack, buses)[1]
 
-# Stochastic parameters
-#----------------------
+## Stochastic parameters
+##----------------------
 
 ϵ = 0.01
 z = quantile(Normal(0,1), 1-ϵ)
@@ -78,9 +80,9 @@ p_U = [f.μ for f in farms]
 Σ = diagm(0 => (σ_vec))
 Σ_sq = sqrt(Σ)
 
-# Define B marix
-# Code (based on how .index value is determined) does not work for an arbitrary pglib dataset.
-# Sometimes, indexes are unique, but not in 1 ... n_lines or 1 ... n_buses.
+## Define B marix
+## Code (based on how .index value is determined) does not work for an arbitrary pglib dataset.
+## Sometimes, indexes are unique, but not in 1 ... n_lines or 1 ... n_buses.
 
 A = zeros(n_lines, n_buses)
 for i in 1:n_buses
@@ -105,7 +107,7 @@ B_node = A' * B
 d = [b.d_P for b in buses]
 
 ## Generation costs
-#------------------
+##-----------------
 c = [g.cost/100 for g in generators]
 c_vec = [0.1 * g.cost for g in generators]
 C_mat = diagm(0 => c_vec)
@@ -128,8 +130,8 @@ C_rt = sqrt(C_mat)
     z1_l = value.(m_dccc[:r_lin])
 
     a_s = value.(m_dccc[:α]) * sum(σ_vec)
-    λ  = -dual.(m_dccc[:mc])
-    γ = -dual.(m_dccc[:γ])
+    λ = -dual.(m_dccc[:mc])
+    γ = dual.(m_dccc[:γ])
 
     ## SYMMETRIC N2N
     ##--------------
@@ -149,6 +151,7 @@ C_rt = sqrt(C_mat)
     sum(value.(m_dccc_n2n[:α]))
     λ_n2n  = -dual.(m_dccc_n2n[:mc])
     χ = dual.(m_dccc_n2n[:χ])
+    sum(χ)
 
 ## MODELS, ASYMMETRIC
 ##-------------------
@@ -207,7 +210,7 @@ scalings = [i for i in range(1, 4, step = 0.5)]
 
 for i in scalings
 
-    global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, i)
+    global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, scaling_sigma = i, scaling_cap = 1.0)
 
     include("models/dccc_n2n_ab.jl")
     s_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
@@ -234,40 +237,48 @@ include("plots_scenarios_sigma.jl")
 ## Scenarios pen scaling
 ##----------------------
 
-scenarios_chi = Vector{Vector{Float64}}()
-scenarios_sigma = Vector{Vector{Float64}}()
-scenarios_zu = Vector{Float64}()
-scenarios_z = Vector{Float64}()
-scenarios_sxs = Vector{Float64}()
+scenarios_chi = Vector{Vector{Vector{Float64}}}()
+scenarios_sigma = Vector{Vector{Vector{Float64}}}()
+scenarios_zu =  Vector{Vector{Float64}}()
+scenarios_z =  Vector{Vector{Float64}}()
+scenarios_sxs = Vector{Vector{Float64}}()
 
-scalings = [i for i in range(1, 1.4, step = 0.05)]
-#scalings = [1.01]
+sigmas = [1.0, 2.0, 3.0, 4.0]
+scalings = [i for i in range(1, 2.0, step = 0.2)]
+
 scenarios = [string(scalings[i]) for i in 1:length(scalings)]
 
-for i in scalings
+for j in 1:length(sigmas)
 
-    global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, scaling_sigma = 1.0, scaling_cap = i)
+    push!(scenarios_chi, Vector{Vector{Float64}}())
+    push!(scenarios_sigma, Vector{Vector{Float64}}())
+    push!(scenarios_zu, Vector{Float64}())
+    push!(scenarios_z, Vector{Float64}())
+    push!(scenarios_sxs, Vector{Float64}())
 
-    global buses, lines, generators = update_generators(1/i)
+    for i in scalings
 
-    include("models/dccc_n2n_ab.jl")
-    sp_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
-    optimize!(sp_m_dccc_n2n_ab)
+        global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, scaling_sigma = sigmas[j], scaling_cap = i)
 
-    zp = objective_value(sp_m_dccc_n2n_ab)
+        include("models/dccc_n2n_ab.jl")
+        sp_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
+        optimize!(sp_m_dccc_n2n_ab)
 
-    sp_zu = value.(sp_m_dccc_n2n_ab[:r_uncert])
-    sp_χm = dual.(sp_m_dccc_n2n_ab[:χm])
+        zp = objective_value(sp_m_dccc_n2n_ab)
 
-    σ_vec = [i.σ for i in scenario_farms]
-    sp_sxs = sum(σ_vec)
+        sp_zu = value.(sp_m_dccc_n2n_ab[:r_uncert])
+        sp_χm = dual.(sp_m_dccc_n2n_ab[:χm])
 
-    push!(scenarios_chi, sp_χm)
-    push!(scenarios_sigma, σ_vec)
-    push!(scenarios_zu, sp_zu)
-    push!(scenarios_z, zp)
-    push!(scenarios_sxs, sp_sxs)
+        σ_vec = [i.σ for i in scenario_farms]
+        sp_sxs = sum(σ_vec)
 
+        push!(scenarios_chi[j], sp_χm)
+        push!(scenarios_sigma[j], σ_vec)
+        push!(scenarios_zu[j], sp_zu)
+        push!(scenarios_z[j], zp)
+        push!(scenarios_sxs[j], sp_sxs)
+
+    end
 end
 
 include("plots_scenarios_pen.jl")
@@ -333,7 +344,6 @@ types = [Int64, Float64, Float64, Float64, Float64, Float64]
 body = hcat([1], [z], [s^2], [ures_cap], [gen_cap], [ures_cap / (ures_cap + gen_cap)])
 
 TexTable("texTables//system.txt", headings1, headings2, body, types, 2)
-
 
 #using DelimitedFiles
 #writedlm(string(@__DIR__,"\\alphas_sys.csv"), alphas_sys,",")
