@@ -353,3 +353,5 @@ TexTable("texTables//system.txt", headings1, headings2, body, types, 2)
 #writedlm(string(@__DIR__,"\\alphas_i.csv"), alphas_i,",")
 
 include("plots.jl")
+
+include("save_data.jl")
