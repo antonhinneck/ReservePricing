@@ -111,7 +111,7 @@ d = [b.d_P for b in buses]
 
 ## Generation costs
 ##-----------------
-c = [g.cost/100 for g in generators]
+c = [g.cost / 100 for g in generators]
 c_vec = [0.1 * g.cost for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
