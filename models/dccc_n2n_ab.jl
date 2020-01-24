@@ -31,8 +31,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
 
     @variable(m, pp_uncert[1:n_generators] >= 0)
     @variable(m, pm_uncert[1:n_generators] >= 0)
-    @expression(m, norm_up, αp * Σ_sq)
-    @expression(m, norm_dwn, αm * Σ_sq)
+    @expression(m, norm_up, αp * Σ_rt)
+    @expression(m, norm_dwn, αm * Σ_rt)
     @constraint(m, uncert_gen1[i in 1:n_generators], vec(vcat(pp_uncert[i], norm_up[i, :])) in SecondOrderCone())
     @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i, :])) in SecondOrderCone())
 
@@ -50,9 +50,9 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @variable(m, r_uncert >= 0)
     @variable(m, r_sched >= 0)
     #@constraint(m, vec(vcat(0.5, r_uncert, C_rt' * pm_uncert * s)) in RotatedSecondOrderCone())
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt' * pp_uncert, C_rt' * pm_uncert)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.25, r_uncert, C_rt' * pp_uncert, C_rt' * pm_uncert)) in RotatedSecondOrderCone())
     @constraint(m, vcat(0.5, r_sched, C_rt' * p) in RotatedSecondOrderCone())
-    @expression(m, quad_cost, r_sched + 1/2 * r_uncert)
+    @expression(m, quad_cost, r_sched + r_uncert)
 
     ## Objective
     ##----------

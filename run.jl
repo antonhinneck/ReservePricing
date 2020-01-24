@@ -4,6 +4,11 @@ using LinearAlgebra, Distributions
 using JuMP
 using Mosek, MosekTools
 using PyPlot, Colors
+import Base: sqrt
+
+function sqrt(array::Vector{T} where T <: Number)
+    return [sqrt(el) for el in array]
+end
 
 cd(@__DIR__)
 include("code_jl/input_dcopf.jl")
@@ -27,7 +32,7 @@ X = diagm(0 => x_vec)
 wind_buses = [3,8,11,20,24,26,31,38,43,49,53]
 wind_cpcty = [70.0, 147.0, 102.0, 105.0, 113.0, 84.0, 59.0, 250.0, 118.0, 76.0, 72.0]
 
-function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scaling_sigma = 1.0, scaling_cap = 1.0)
+function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scaling_sigma = 2.0, scaling_cap = 1.0)
 
     @assert length(buses) == length(capacity)
     farms = Vector{Farm}()
@@ -38,20 +43,22 @@ function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scal
         push!(farms,  Farm(capacity[i] / 100, scaling_sigma * capacity[i] / 10 / 100, buses[i]))
     end
 
-    σ_vec = [i.σ for i in farms]
-    #s_sq = diagm(0 => (σ_vec.^2))
-    s_rt = diagm(0 => (σ_vec))
-    s = sum(s_rt)
-    Σ = diagm(0 => (σ_vec))
-    Σ_sq = sqrt(Σ)
+    σ_vec = [i.σ^2 for i in farms]
 
-    return farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq
+    Σ = diagm(0 => (σ_vec))
+    s_sq = sum(Σ)
+    Σ_rt = sqrt(Σ)
+    s = sum(Σ_rt)
+
+    return farms, nf, σ_vec, Σ, s_sq, Σ_rt, s
 end
 
-farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty)
+A = [0.5 for i in 1:n_farms]
+
+farms, nf, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms(wind_buses, wind_cpcty)
 u_buses = [f.bus for f in farms]
 
-line_limits= [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
+line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
 
 thermalLimitscale = 0.8
 for i in 1:length(lines)
@@ -75,10 +82,6 @@ slack_bus = findall(b -> b.is_slack, buses)[1]
 ϵ = 0.01
 z = quantile(Normal(0,1), 1-ϵ)
 p_U = [f.μ for f in farms]
-σ_vec = [f.σ for f in farms]
-
-Σ = diagm(0 => (σ_vec))
-Σ_sq = sqrt(Σ)
 
 ## Define B marix
 ## Code (based on how .index value is determined) does not work for an arbitrary pglib dataset.
@@ -164,15 +167,15 @@ C_rt = sqrt(C_mat)
     optimize!(m_dccc_ab)
     z3 = objective_value(m_dccc_ab)
 
-    z3_u = value.(m_dccc_ab[:r_uncert])
+    z3_u = value.(m_dccc_ab[:r_uncert]) / 2
     z3_q = value.(m_dccc_ab[:r_sched])
     z3_l = value.(m_dccc_ab[:r_lin])
     ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
     am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
     λ_ab  = -dual.(m_dccc_ab[:mc])
 
-    γp = -dual.(m_dccc_ab[:γp])
-    γm = -dual.(m_dccc_ab[:γm])
+    γp = dual.(m_dccc_ab[:γp])
+    γm = dual.(m_dccc_ab[:γm])
 
     diff = ap .- am
 
@@ -221,7 +224,7 @@ for i in scalings
     s_zu = value.(s_m_dccc_n2n_ab[:r_uncert])
     s_χm = dual.(s_m_dccc_n2n_ab[:χm])
 
-    σ_vec = [i.σ for i in scenario_farms]
+    #σ_vec = [i.σ for i in scenario_farms]
     s_sxs = sum(σ_vec)
 
     push!(scenarios_chi, s_χm)

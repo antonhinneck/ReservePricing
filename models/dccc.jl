@@ -5,14 +5,12 @@ function build_dccc(generators, buses, lines, farms)
     output_level = 1
     m = Model(with_optimizer(Mosek.Optimizer,  MSK_IPAR_LOG=output_level))
 
-
     ## Variables
     ##----------
     @variable(m, p[1:n_generators] >= 0)
     @variable(m, f[1:n_lines])
     @variable(m, θ[1:n_buses])
     @variable(m, α[1:n_generators] >= 0)
-
 
     ## General Constraints
     ##--------------------
@@ -29,7 +27,7 @@ function build_dccc(generators, buses, lines, farms)
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * α[i] * s <= generators[i].g_max)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * α[i] * s <= 0)
-
+    
     ## Linear Cost
     ##------------
     @variable(m, r_lin >= 0)

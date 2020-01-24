@@ -1,6 +1,10 @@
 using PyPlot
 cd(@__DIR__)
 
+function pw(array::Vector{T} where T <: Number)
+    return [el^2 for el in array]
+end
+
 u_buses = Vector{String}()
 s_lmp = Vector{Float64}()
 s_lmp_n2n = Vector{Float64}()
@@ -50,17 +54,17 @@ rc("font", family = "serif", style = "italic", size = 14)
 rc("text", usetex = true)
 rc("lines", linewidth = 1)
 
-ax = fig.add_axes([0.09,0.15,0.9,0.825])
+ax = fig.add_axes([0.1,0.15,0.895,0.825])
 grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
 ax.tick_params(direction="in",top=true,right=true,width=1.4)
 
 #ax.set_axisbelow(true)
 ax.set_yscale("log")
 xlabel("\$u\$")
-ylabel("\$\\pi\$")
+ylabel("\$\\pi^{\\alpha}_{(u)},\\beta_{u},\\sigma\$")
 ##xlim(left=-5,right=5)
 #x = [0.01 * i for i in -50000:50000]
-
+g_rgba
 g = [γ for i in u_buses]
 gm = [γm for i in u_buses]
 gp = [γp for i in u_buses]
@@ -68,14 +72,49 @@ b = [χ[i] / γ for i in 1:length(u_buses)]
 bm = [χm[i] / γm for i in 1:length(u_buses)]
 bp = [χp[i] / γp for i in 1:length(u_buses)]
 
-plot(u_buses, g, color = g_rgba[1], mec = g_rgba[1], mfc = "white", label = "\$\\pi^{\\alpha}\$", lw = 1, ls = "dashed", marker = "D", ms = 4, mew = 1.6)
-plot(u_buses, χ, color = g_rgba[3], mec = g_rgba[1], mfc = "white", label = "\$\\pi^{\\alpha}_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 4, mew = 1.6)
-plot(u_buses, b, color = g_rgba[3], mec = g_rgba[1], mfc = "white", label = "\$\\beta_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 4, mew = 1.6)
+plot(u_buses, g, color = "lightblue", mec = g_rgba[1], mfc = "white", label = "\$\\pi^{\\alpha}\$", lw = 1, ls = "dashed", marker = "D", ms = 2.4, mew = 1)
+plot(u_buses, χ, color = "lightblue", mec = g_rgba[3], mfc = "white", label = "\$\\pi^{\\alpha}_{u}\$", lw = 1, ls = "dashed", marker = "s", ms = 2.4, mew = 1)
+plot(u_buses, b, color = "lightblue", mec = g_rgba[5], mfc = "white", label = "\$\\beta_{u}\$", lw = 1, ls = "dashed", marker = "+", ms = 4.6, mew = 1)
 
-plot(u_buses, σ_vec, color = g_rgba[5], mec = g_rgba[5], mfc = "white", label = "\$\\pi^{\\alpha}\$", lw = 1, ls = "dashed", marker = "D", ms = 4, mew = 1.6)
+plot(u_buses, pw(σ_vec), color = "black", mec = "black", mfc = "white", label = "\$\\sigma\$", lw = 1, ls = "dashed", marker = "o", ms = 2.4, mew = 1)
 
 legend(loc = "upper right",fancybox=false, edgecolor="black")
-savefig(string("plots//beta_u.pdf"), format = :pdf)
+savefig(string("plots//beta_u_sym.pdf"), format = :pdf)
+
+fig = figure(figsize=(8, 3))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
+
+ax = fig.add_axes([0.1,0.15,0.895,0.825])
+grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
+ax.tick_params(direction="in",top=true,right=true,width=1.4)
+
+#ax.set_axisbelow(true)
+ax.set_yscale("log")
+xlabel("\$u\$")
+ylabel("\$\\pi^{\\alpha^{\\pm}}_{(u)},\\beta^{\\pm}_{u},\\sigma\$")
+##xlim(left=-5,right=5)
+#x = [0.01 * i for i in -50000:50000]
+g_rgba
+g = [γ for i in u_buses]
+gm = [γm for i in u_buses]
+gp = [γp for i in u_buses]
+b = [χ[i] / γ for i in 1:length(u_buses)]
+bm = [χm[i] / γm for i in 1:length(u_buses)]
+bp = [χp[i] / γp for i in 1:length(u_buses)]
+
+plot(u_buses, gm, color = "blue", mec = g_rgba[1], mfc = "white", label = "\$\\pi^{\\alpha^{-}}\$", lw = 1.2, ls = "dashed", marker = "D", ms = 2.4, mew = 1)
+plot(u_buses, gp, color = "lightgreen", mec = g_rgba[1], mfc = "white", label = "\$\\pi^{\\alpha^{+}}\$", lw = 1, ls = "dashed", marker = "D", ms = 2.4, mew = 1)
+plot(u_buses, χm, color = "blue", mec = g_rgba[3], mfc = "white", label = "\$\\pi^{\\alpha^{-}}_{u}\$", lw = 1.2, ls = "dashed", marker = "s", ms = 2.4, mew = 1)
+plot(u_buses, χp, color = "lightgreen", mec = g_rgba[3], mfc = "white", label = "\$\\pi^{\\alpha^{+}}_{u}\$", lw = 1, ls = "dashed", marker = "s", ms = 2.4, mew = 1)
+plot(u_buses, bm, color = "blue", mec = g_rgba[5], mfc = "white", label = "\$\\beta^{-}_{u}\$", lw = 1.2, ls = "dashed", marker = "+", ms = 4.6, mew = 1)
+plot(u_buses, bp, color = "lightgreen", mec = g_rgba[5], mfc = "white", label = "\$\\beta^{+}_{u}\$", lw = 1, ls = "dashed", marker = "+", ms = 4.6, mew = 1)
+
+plot(u_buses, pw(σ_vec), color = "black", mec = "black", mfc = "white", label = "\$\\sigma\$", lw = 1, ls = "dashed", marker = "o", ms = 2.4, mew = 1)
+
+legend(loc = "upper right",fancybox=false, edgecolor="black")
+savefig(string("plots//beta_u_asym.pdf"), format = :pdf)
 
 fig = figure(figsize=(8, 3))
 rc("font", family = "serif", style = "italic", size = 14)
