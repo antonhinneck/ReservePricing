@@ -15,23 +15,23 @@ function build_dccc(generators, buses, lines, farms)
     ## General Constraints
     ##--------------------
     @constraint(m, θ[slack_bus] == 0)
-    @expression(m, p_by_bus[i=1:n_buses], length(buses[i].gen_list) > 0 ? sum(p[k] for k in buses[i].gen_list) : 0.0)
-    @expression(m, pu_by_bus[i=1:n_buses], length(buses[i].farm_list) > 0 ? sum(farms[k].μ for k in buses[i].farm_list) : 0.0)
+    @expression(m, p_by_bus[i=1:n_buses], length(buses[i].genids) > 0 ? sum(p[k] for k in buses[i].genids) : 0.0)
+    @expression(m, pu_by_bus[i=1:n_buses], length(buses[i].farmids) > 0 ? sum(farms[k].μ for k in buses[i].farmids) : 0.0)
     @constraint(m, mc, B_node * θ .== p_by_bus .+ pu_by_bus .- d)
 
     @constraint(m, B * θ .== f)
-    @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].s_max)
-    @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].s_max)
+    @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].u)
+    @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].u)
 
     @constraint(m, γ, sum(α[i] for i in 1:n_generators) == 1)
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + z * α[i] * s <= generators[i].g_max)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * α[i] * s <= 0)
-    
+    @constraint(m, cc1[i in 1:n_generators], p[i] + z * α[i] * s <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * α[i] * s <= generators[i].Pgmin)
+
     ## Linear Cost
     ##------------
     @variable(m, r_lin >= 0)
-    @expression(m, linear_cost, sum(p[i] * generators[i].cost for i in 1:n_generators))
+    @expression(m, linear_cost, sum(p[i] * generators[i].pi2 for i in 1:n_generators))
     @constraint(m, r_lin == linear_cost)
 
     ## Quadratic Cost

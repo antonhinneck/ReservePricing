@@ -4,6 +4,7 @@ using LinearAlgebra, Distributions
 using JuMP
 using Mosek, MosekTools
 using PyPlot, Colors
+using JLD
 import Base: sqrt
 
 function sqrt(array::Vector{T} where T <: Number)
@@ -11,20 +12,16 @@ function sqrt(array::Vector{T} where T <: Number)
 end
 
 cd(@__DIR__)
-include("code_jl/input_dcopf.jl")
+include("code_jl/input.jl")
 include("code_jl/utils.jl")
 include("models/dccc.jl")
 
-datadir = "data/ieee118"
-buses, lines, generators = load_network(datadir)
+case_data = load("data//118bus.jld")
+generators = case_data["generators"]
+buses = case_data["buses"]
+lines = case_data["lines"]
 
-function update_generators(scaling_cap::Float64, datadir = "data/ieee118")
-    buses, lines, generators = load_network(datadir)
-    for g in generators
-        g.g_max = g.g_max * scaling_cap
-    end
-    return buses, lines, generators
-end
+slack_bus = findall(b -> b.kind == :Ref, buses)[1]
 
 x_vec = [l.x for l in lines]
 X = diagm(0 => x_vec)
@@ -53,28 +50,24 @@ function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scal
     return farms, nf, σ_vec, Σ, s_sq, Σ_rt, s
 end
 
-A = [0.5 for i in 1:n_farms]
+farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms(wind_buses, wind_cpcty)
 
-farms, nf, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms(wind_buses, wind_cpcty)
 u_buses = [f.bus for f in farms]
 
 line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
 
 thermalLimitscale = 0.8
 for i in 1:length(lines)
-    lines[i].s_max = 0.99 * thermalLimitscale * line_limits[i] / 100
+    lines[i].u = 0.99 * thermalLimitscale * line_limits[i] / 100
 end
 
 for (i,f) in enumerate(farms)
-    push!(buses[f.bus].farm_list, i)
+    push!(buses[f.bus].farmids, i)
 end
 
 n_buses = size(buses, 1)
 n_generators = size(generators, 1)
 n_lines = size(lines, 1)
-n_farms = size(farms, 1)
-
-slack_bus = findall(b -> b.is_slack, buses)[1]
 
 ## Stochastic parameters
 ##----------------------
@@ -89,14 +82,14 @@ p_U = [f.μ for f in farms]
 
 A = zeros(n_lines, n_buses)
 for i in 1:n_buses
-    if size(buses[i].start_line, 1) > 0
-        for l in buses[i].start_line
-            A[lines[l].index, i] = 1
+    if size(buses[i].outlist, 1) > 0
+        for l in buses[i].outlist
+            A[lines[l].arcID, i] = 1
         end
     end
-    if size(buses[i].end_line, 1) > 0
-        for l in buses[i].end_line
-            A[lines[l].index, i] = -1
+    if size(buses[i].inlist, 1) > 0
+        for l in buses[i].inlist
+            A[lines[l].arcID, i] = -1
         end
     end
 end
@@ -107,12 +100,12 @@ X = diagm(0 => x_vec)
 B = X ^ (-1) * A
 B_node = A' * B
 
-d = [b.d_P for b in buses]
+d = [b.Pd for b in buses]
 
 ## Generation costs
 ##-----------------
-c = [g.cost / 100 for g in generators]
-c_vec = [0.1 * g.cost for g in generators]
+c = [g.pi2 for g in generators]
+c_vec = [g.pi1 for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
 

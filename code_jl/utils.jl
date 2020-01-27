@@ -173,3 +173,11 @@ mutable struct MultiGraph{T <: Integer} <: AbstractMultiGraph{T}
     fadjlist::Vector{Vector{T}} # [src]: (dst, dst, dst)
 
 end
+
+function update_generators(scaling_cap::Float64, datadir = "data/ieee118")
+    buses, lines, generators = load_network(datadir)
+    for g in generators
+        g.Pgmax = g.Pgmax * scaling_cap
+    end
+    return buses, lines, generators
+end
