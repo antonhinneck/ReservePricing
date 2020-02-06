@@ -28,23 +28,26 @@ function build_dccc(generators, buses, lines, farms)
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * α[i] * s <= generators[i].Pgmax)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * α[i] * s <= generators[i].Pgmin)
 
-    ## Linear Cost
-    ##------------
-    @variable(m, r_lin >= 0)
-    @expression(m, linear_cost, sum(p[i] * generators[i].pi2 for i in 1:n_generators))
-    @constraint(m, r_lin == linear_cost)
+    ## Generation Cost
+    ##----------------
+    @variable(m, d_con >= 0)
+    @variable(m, d_lin >= 0)
+    @variable(m, d_quad >= 0)
+    @constraint(m, d_con == sum(generators[i].pi3 for i in 1:n_generators))
+    @constraint(m, d_lin == sum(p[i] * generators[i].pi2 for i in 1:n_generators))
+    @constraint(m, vec(vcat(0.5, d_quad, C_rt * p)) in RotatedSecondOrderCone())
+    @expression(m, det_c, d_con + d_lin + d_quad)
 
-    ## Quadratic Cost
+    ## Balancing Cost
     ##---------------
-    @variable(m, r_uncert >= 0)
-    @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * α * s)) in RotatedSecondOrderCone())
-    @constraint(m, vcat(r_sched, 0.5, C_rt * p) in RotatedSecondOrderCone())
-    @expression(m, quad_cost, r_sched + r_uncert)
+
+    @variable(m, u_quad >= 0)
+    @constraint(m, vec(vcat(0.5, u_quad, C_rt * α * s)) in RotatedSecondOrderCone())
+    @expression(m, unc_c, u_quad)
 
     ## Objective
     ##----------
-    @objective(m, Min, r_lin + quad_cost)
+    @objective(m, Min, det_c + unc_c)
 
     return m
 

@@ -26,7 +26,7 @@ slack_bus = findall(b -> b.kind == :Ref, buses)[1]
 x_vec = [l.x for l in lines]
 X = diagm(0 => x_vec)
 
-wind_buses = [3,8,11,20,24,26,31,38,43,49,53]
+wind_buses = [3, 8, 11, 20, 24, 26, 31, 38, 43, 49, 53]
 wind_cpcty = [70.0, 147.0, 102.0, 105.0, 113.0, 84.0, 59.0, 250.0, 118.0, 76.0, 72.0]
 
 function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scaling_sigma = 2.0, scaling_cap = 1.0)
@@ -53,6 +53,8 @@ end
 farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms(wind_buses, wind_cpcty)
 
 u_buses = [f.bus for f in farms]
+μ_vec = [f.μ for f in farms]
+ν = sum(μ_vec)
 
 line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
 
@@ -104,94 +106,122 @@ d = [b.Pd for b in buses]
 
 ## Generation costs
 ##-----------------
-c = [g.pi2 for g in generators]
-c_vec = [g.pi1 for g in generators]
+c_vec = [g.pi1  for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
-
-## MODELS, SYMMETRIC
+#[generators[i].Pgmax for i in 1:n_generators]
+## MODELS
 ##------------------
 
-    ## SYMMETRIC SYSTEM-WIDE
-    ##----------------------
+## SYMMETRIC SYSTEM-WIDE
+##----------------------
 
-    include("models/dccc.jl")
-    m_dccc = build_dccc(generators, buses, lines, farms)
+include("models/dccc.jl")
+m_dccc = build_dccc(generators, buses, lines, farms)
 
-    optimize!(m_dccc)
-    z1 = objective_value(m_dccc)
+optimize!(m_dccc)
+z1 = objective_value(m_dccc)
 
-    z1_u = value.(m_dccc[:r_uncert])
-    z1_q = value.(m_dccc[:r_sched])
-    z1_l = value.(m_dccc[:r_lin])
+z1_u = value.(m_dccc[:det_c])
+z1_q = value.(m_dccc[:unc_c])
+value.(m_dccc[:p])
 
-    a_s = value.(m_dccc[:α]) * sum(σ_vec)
-    λ = -dual.(m_dccc[:mc])
-    γ = dual.(m_dccc[:γ])
+a_s = value.(m_dccc[:α]) * sum(σ_vec)
+λ = -dual.(m_dccc[:mc])
+γ = dual.(m_dccc[:γ])
+
+## ASYMMETRIC SYSTEM-WIDE
+##-----------------------
+[generators[i].pi2 for i in 1:n_generators]
+[generators[i].pi1 for i in 1:n_generators]
+include("models/dccc_ab.jl")
+m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
+optimize!(m_dccc_ab)
+z3 = objective_value(m_dccc_ab)
+
+z3_up = value.(m_dccc_ab[:det_c])
+z3_um = value.(m_dccc_ab[:unc_c])
+#z3_q = value.(m_dccc_ab[:r_sched])
+z3_l = value.(m_dccc_ab[:u_lin])
+z3_bl = value.(m_dccc_ab[:u_bilin])
+z3_q = value.(m_dccc_ab[:u_quad_p])
+z3_q = value.(m_dccc_ab[:u_quad_m])
+ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
+am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
+λ_ab  = -dual.(m_dccc_ab[:mc])
+
+γp = dual.(m_dccc_ab[:γp])
+γm = dual.(m_dccc_ab[:γm])
+m_dccc_ab[:δp]
+diff = ap .- am
+
+@inline function evalGap(m::JuMP.Model)
+
+    act_p = value.(m[:tp0])
+    act_m = value.(m[:tm0])
+
+    ub_p = value.(m[:δp]) .* value.(m[:p])
+    ub_m = value.(m[:δm]) .* value.(m[:p])
+
+    return act_p, ub_p, act_m, ub_m
+
+end
+
+evalGap(m_dccc_ab)
 
     ## SYMMETRIC N2N
     ##--------------
 
-    include("models/dccc_n2n.jl")
-    m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
+include("models/dccc_n2n.jl")
+m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 
-    optimize!(m_dccc_n2n)
-    z2 = objective_value(m_dccc_n2n)
-    termination_status(m_dccc_n2n)
+optimize!(m_dccc_n2n)
+z2 = objective_value(m_dccc_n2n)
+termination_status(m_dccc_n2n)
 
-    z2_u = value.(m_dccc_n2n[:r_uncert])
-    z2_q = value.(m_dccc_n2n[:r_sched])
-    z2_l = value.(m_dccc_n2n[:r_lin])
-    sum(value.(m_dccc_n2n[:p_uncert]))
-    a_n2n = value.(m_dccc_n2n[:α]) * σ_vec
-    sum(value.(m_dccc_n2n[:α]))
-    λ_n2n  = -dual.(m_dccc_n2n[:mc])
-    χ = dual.(m_dccc_n2n[:χ])
-    sum(χ)
+z2_u = value.(m_dccc_n2n[:r_uncert])
+z2_q = value.(m_dccc_n2n[:r_sched])
+z2_l = value.(m_dccc_n2n[:r_lin])
+sum(value.(m_dccc_n2n[:p_uncert]))
+a_n2n = value.(m_dccc_n2n[:α]) * σ_vec
+sum(value.(m_dccc_n2n[:α]))
+λ_n2n  = -dual.(m_dccc_n2n[:mc])
+χ = dual.(m_dccc_n2n[:χ])
+sum(χ)
 
 ## MODELS, ASYMMETRIC
 ##-------------------
 
-    ## ASYMMETRIC SYSTEM-WIDE
-    ##-----------------------
 
-    include("models/dccc_ab.jl")
-    m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
-    optimize!(m_dccc_ab)
-    z3 = objective_value(m_dccc_ab)
-
-    z3_u = value.(m_dccc_ab[:r_uncert]) / 2
-    z3_q = value.(m_dccc_ab[:r_sched])
-    z3_l = value.(m_dccc_ab[:r_lin])
-    ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
-    am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
-    λ_ab  = -dual.(m_dccc_ab[:mc])
-
-    γp = dual.(m_dccc_ab[:γp])
-    γm = dual.(m_dccc_ab[:γm])
-
-    diff = ap .- am
 
     ## ASYMMETRIC N2N
     ##---------------
 
-    include("models/dccc_n2n_ab.jl")
-    m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
-    optimize!(m_dccc_n2n_ab)
-    z4 = objective_value(m_dccc_n2n_ab)
-    termination_status(m_dccc_n2n_ab)
+include("models/dccc_n2n_ab.jl")
+m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
+optimize!(m_dccc_n2n_ab)
+z4 = objective_value(m_dccc_n2n_ab)
+termination_status(m_dccc_n2n_ab)
 
-    z4_u = value.(m_dccc_n2n_ab[:r_uncert])
-    z4_q = value.(m_dccc_n2n_ab[:r_sched])
-    z4_l = value.(m_dccc_n2n_ab[:r_lin])
-    λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
-    χp = dual.(m_dccc_n2n_ab[:χp])
-    χm = dual.(m_dccc_n2n_ab[:χm])
-    ap_n2n = value.(m_dccc_n2n_ab[:αp]) * σ_vec
-    am_n2n = value.(m_dccc_n2n_ab[:αm]) * σ_vec
+z4_u = value.(m_dccc_n2n_ab[:r_uncert])
+z4_q = value.(m_dccc_n2n_ab[:r_sched])
+z4_l = value.(m_dccc_n2n_ab[:r1_lin])
+value.(m_dccc_n2n_ab[:r2_lin])
+λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
+χp = dual.(m_dccc_n2n_ab[:χp])
+χm = dual.(m_dccc_n2n_ab[:χm])
+ap_n2n = value.(m_dccc_n2n_ab[:αp]) * μ_vec
+sum((value.(m_dccc_n2n_ab[:αp]) * μ_vec))
+sum(value.(m_dccc_n2n_ab[:tp1]))
 
-    sum(value.(m_dccc_n2n_ab[:pp_uncert]))
-    sum(value.(m_dccc_n2n_ab[:pm_uncert]))
+am_n2n = value.(m_dccc_n2n_ab[:αm]) * μ_vec
+sum((value.(m_dccc_n2n_ab[:αm]) * μ_vec))
+sum(value.(m_dccc_n2n_ab[:tm1]))
+
+sum(value.(m_dccc_n2n_ab[:pp_uncert]))
+sum(value.(m_dccc_n2n_ab[:pm_uncert]))
+
+
 
 ## SCENARIOS σ scaling
 ##--------------------

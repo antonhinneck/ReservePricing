@@ -5,7 +5,6 @@ function build_dccc_ab(generators, buses, lines, farms)
     output_level = 1
     m = Model(with_optimizer(Mosek.Optimizer,  MSK_IPAR_LOG=output_level))
 
-
     ## Variables
     ##----------
     @variable(m, p[1:n_generators] >= 0)
@@ -31,24 +30,53 @@ function build_dccc_ab(generators, buses, lines, farms)
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * αm[i] * s <= generators[i].Pgmax)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * αp[i] * s <= generators[i].Pgmin)
 
+    ## Generation Cost
+    ##----------------
+    @variable(m, d_con >= 0)
+    @variable(m, d_lin >= 0)
+    @variable(m, d_quad >= 0)
+    @constraint(m, d_con == sum(generators[i].pi3 for i in 1:n_generators))
+    @constraint(m, d_lin == sum(p[i] * generators[i].pi2 for i in 1:n_generators))
+    @constraint(m, vec(vcat(0.5, d_quad, C_rt * p)) in RotatedSecondOrderCone())
+    @expression(m, det_c, d_con + d_lin + d_quad)
+
     ## Linear Cost
     ##------------
-    @variable(m, r_lin >= 0)
-    @expression(m, linear_cost, sum(p[i] * generators[i].pi2 for i in 1:n_generators))
-    @constraint(m, r_lin == linear_cost)
+    @variable(m, u_lin)
+    @constraint(m, u_lin == ν * sum(generators[i].pi2 * (αm[i] - αp[i]) for i in 1:n_generators))
+
+    ## Bilinear Cost
+    ##--------------
+
+    @variable(m, u_bilin)
+    @variable(m, tp0[1:n_generators] >= 0)
+    @variable(m, tm0[1:n_generators] >= 0)
+    @variable(m, tp1[1:n_generators] >= 0)
+    @variable(m, tm1[1:n_generators] >= 0)
+
+    @expression(m, δp, αp .* ν .* [generators[i].pi2 for i in 1:n_generators])
+    @expression(m, δm, αm .* ν .* [generators[i].pi2 for i in 1:n_generators])
+
+    @constraint(m, s1[i in 1:n_generators], 1.0 * [δp[i]; p[i]; tp0[i]]  in MOI.PowerCone(0.5))
+    @constraint(m, s2[i in 1:n_generators], 1.0 * [δm[i]; p[i]; tm0[i]]  in MOI.PowerCone(0.5))
+    @constraint(m, s3[i in 1:n_generators], 1.0 * [0.5, tp0[i], tp1[i]] in RotatedSecondOrderCone())
+    @constraint(m, s4[i in 1:n_generators], 1.0 * [0.5, tm0[i], tm1[i]] in RotatedSecondOrderCone())
+
+    @constraint(m, u_bilin == sum(tm1[i] - tp1[i] for i in 1:n_generators))
 
     ## Quadratic Cost
     ##---------------
-    @variable(m, r_uncert >= 0)
-    @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * αp * s, C_rt  * αm * s)) in RotatedSecondOrderCone())
-    #@constraint(m, vec(vcat(0.5, r_uncert, C_rt * αm * s)) in RotatedSecondOrderCone())
-    @constraint(m, vcat(r_sched, 0.5, C_rt * p) in RotatedSecondOrderCone())
-    @expression(m, quad_cost, r_sched + 0.5 * r_uncert)
+    @variable(m, u_quad_p >= 0)
+    @variable(m, u_quad_m >= 0)
+    @constraint(m, vec(vcat(0.25, u_quad_p, C_rt * αp .* s)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.25, u_quad_m, C_rt * αm .* s)) in RotatedSecondOrderCone())
+
+    #@constraint(m, vcat(r_sched, 0.5, C_rt * p) in RotatedSecondOrderCone())
+    @expression(m, unc_c, u_lin + u_quad_p + u_quad_m)
 
     ## Objective
     ##----------
-    @objective(m, Min, r_lin + quad_cost)
+    @objective(m, Min, det_c + unc_c)
 
     return m
 

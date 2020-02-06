@@ -36,7 +36,7 @@ function build_dccc_n2n(generators, buses, lines, farms)
     ## Linear Cost
     ##------------
     @variable(m, r_lin >= 0)
-    @expression(m, linear_cost, sum(p[i] * generators[i].pi2 for i in 1:n_generators))
+    @expression(m, linear_cost, sum(p[i] * generators[i].pi2 + generators[i].pi3 for i in 1:n_generators))
     @constraint(m, r_lin == linear_cost)
 
     ## Quadratic Cost
