@@ -14,12 +14,15 @@ end
 cd(@__DIR__)
 include("code_jl/input.jl")
 include("code_jl/utils.jl")
+include("code_jl/linApprox.jl")
 include("models/dccc.jl")
 
 case_data = load("data//118bus.jld")
 generators = case_data["generators"]
 buses = case_data["buses"]
 lines = case_data["lines"]
+
+for g in generators g.Pgmax = g.Pgmax * 0.96 end
 
 slack_bus = findall(b -> b.kind == :Ref, buses)[1]
 
@@ -60,7 +63,7 @@ line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	
 
 thermalLimitscale = 0.8
 for i in 1:length(lines)
-    lines[i].u = 0.99 * thermalLimitscale * line_limits[i] / 100
+    lines[i].u = 1.2 * thermalLimitscale * line_limits[i] / 100 #0.99
 end
 
 for (i,f) in enumerate(farms)
@@ -73,6 +76,8 @@ n_lines = size(lines, 1)
 
 ## Stochastic parameters
 ##----------------------
+
+
 
 ϵ = 0.01
 z = quantile(Normal(0,1), 1-ϵ)
@@ -109,6 +114,7 @@ d = [b.Pd for b in buses]
 c_vec = [g.pi1  for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
+
 #[generators[i].Pgmax for i in 1:n_generators]
 ## MODELS
 ##------------------
@@ -123,10 +129,10 @@ optimize!(m_dccc)
 z1 = objective_value(m_dccc)
 
 z1_u = value.(m_dccc[:det_c])
-z1_q = value.(m_dccc[:unc_c])
+#z1_q = value.(m_dccc[:unc_c])
 value.(m_dccc[:p])
 
-a_s = value.(m_dccc[:α]) * sum(σ_vec)
+a_s = value.(m_dccc[:α]) #* sum(σ_vec)
 λ = -dual.(m_dccc[:mc])
 γ = dual.(m_dccc[:γ])
 
@@ -142,10 +148,10 @@ z3 = objective_value(m_dccc_ab)
 z3_up = value.(m_dccc_ab[:det_c])
 z3_um = value.(m_dccc_ab[:unc_c])
 #z3_q = value.(m_dccc_ab[:r_sched])
-z3_l = value.(m_dccc_ab[:u_lin])
-z3_bl = value.(m_dccc_ab[:u_bilin])
-z3_q = value.(m_dccc_ab[:u_quad_p])
-z3_q = value.(m_dccc_ab[:u_quad_m])
+# z3_l = value.(m_dccc_ab[:u_lin])
+# z3_bl = value.(m_dccc_ab[:u_bilin])
+# z3_q = value.(m_dccc_ab[:u_quad_p])
+# z3_q = value.(m_dccc_ab[:u_quad_m])
 ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
 am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
 λ_ab  = -dual.(m_dccc_ab[:mc])

@@ -28,6 +28,12 @@ function build_dccc(generators, buses, lines, farms)
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * α[i] * s <= generators[i].Pgmax)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * α[i] * s <= generators[i].Pgmin)
 
+    @variable(m, cp[1:n_generators] >= 0)
+    @constraint(m, approx[i in 1:n_generators, j in 1:n_coefs], cp[i] >= coefs[j][1] * p[i] + coefs[j][2])
+
+    @expression(m, det_c, sum(cp[i] for i in 1:n_generators))
+
+    #=
     ## Generation Cost
     ##----------------
     @variable(m, d_con >= 0)
@@ -48,6 +54,8 @@ function build_dccc(generators, buses, lines, farms)
     ## Objective
     ##----------
     @objective(m, Min, det_c + unc_c)
+    =#
+    @objective(m, Min, det_c)
 
     return m
 

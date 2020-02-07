@@ -47,6 +47,7 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @expression(m, linear_cost_lin, 0.5 * sum(generators[i].pi2 * (δm[i] - δp[i]) for i in 1:n_generators))
     @constraint(m, r1_lin == linear_cost_lin)
 
+    #=
     ## TODO:
     ##------
     @variable(m, r2_lin >= 0)
@@ -94,7 +95,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
 
     ## Objective
     ##----------
-    @objective(m, Min, r1_lin + r2_lin + quad_cost)
+    =#
+    @objective(m, Min, c_det)
 
     return m
 
