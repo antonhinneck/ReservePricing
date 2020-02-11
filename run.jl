@@ -13,16 +13,32 @@ end
 
 cd(@__DIR__)
 include("code_jl/input.jl")
-include("code_jl/utils.jl")
-include("code_jl/linApprox.jl")
-include("models/dccc.jl")
+
+case_data = load("data//118bus.jld")
+buses = case_data["buses"]
+
+lines = case_data["lines"]
+line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
+thermalLimitscale = 4.5
+for i in 1:length(lines)
+    lines[i].u = 1.0 * thermalLimitscale * line_limits[i] / 100 #0.99
+end
 
 case_data = load("data//118bus.jld")
 generators = case_data["generators"]
-buses = case_data["buses"]
-lines = case_data["lines"]
+for g in generators g.Pgmax = g.Pgmax * 0.6 end
 
-for g in generators g.Pgmax = g.Pgmax * 0.96 end
+[g.Pgmax for g in generators]
+
+total_gen = sum([g.Pgmax for g in generators])
+total_dem = sum([b.Pd for b in buses])
+
+
+
+
+include("code_jl/utils.jl")
+include("models/dccc.jl")
+include("code_jl/linApprox.jl")
 
 slack_bus = findall(b -> b.kind == :Ref, buses)[1]
 
@@ -59,12 +75,6 @@ u_buses = [f.bus for f in farms]
 μ_vec = [f.μ for f in farms]
 ν = sum(μ_vec)
 
-line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
-
-thermalLimitscale = 0.8
-for i in 1:length(lines)
-    lines[i].u = 1.2 * thermalLimitscale * line_limits[i] / 100 #0.99
-end
 
 for (i,f) in enumerate(farms)
     push!(buses[f.bus].farmids, i)
@@ -79,7 +89,7 @@ n_lines = size(lines, 1)
 
 
 
-ϵ = 0.01
+ϵ = 0.001
 z = quantile(Normal(0,1), 1-ϵ)
 p_U = [f.μ for f in farms]
 
@@ -91,12 +101,12 @@ A = zeros(n_lines, n_buses)
 for i in 1:n_buses
     if size(buses[i].outlist, 1) > 0
         for l in buses[i].outlist
-            A[lines[l].arcID, i] = 1
+            A[lines[l].arcID, i] = -1
         end
     end
     if size(buses[i].inlist, 1) > 0
         for l in buses[i].inlist
-            A[lines[l].arcID, i] = -1
+            A[lines[l].arcID, i] = 1
         end
     end
 end
@@ -114,6 +124,17 @@ d = [b.Pd for b in buses]
 c_vec = [g.pi1  for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
+
+include("models/dccc_n2n_ab.jl")
+m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
+optimize!(m_dccc_n2n_ab)
+obj_n2n_ab = objective_value(m_dccc_n2n_ab)
+
+χp = dual.(m_dccc_n2n_ab[:χp])
+χm = dual.(m_dccc_n2n_ab[:χm])
+#dual.(m_dccc_n2n_ab[:χm])
+
+value.(m_dccc_n2n_ab[:cp])
 
 #[generators[i].Pgmax for i in 1:n_generators]
 ## MODELS
@@ -158,9 +179,9 @@ am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
 
 γp = dual.(m_dccc_ab[:γp])
 γm = dual.(m_dccc_ab[:γm])
-m_dccc_ab[:δp]
+#m_dccc_ab[:δp]
 diff = ap .- am
-
+#=
 @inline function evalGap(m::JuMP.Model)
 
     act_p = value.(m[:tp0])
@@ -173,10 +194,13 @@ diff = ap .- am
 
 end
 
-evalGap(m_dccc_ab)
+evalGap(m_dccc_ab)=#
 
-    ## SYMMETRIC N2N
-    ##--------------
+## NODE-TO-NODE
+##-------------
+
+## SYM
+##----
 
 include("models/dccc_n2n.jl")
 m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
@@ -185,9 +209,13 @@ optimize!(m_dccc_n2n)
 z2 = objective_value(m_dccc_n2n)
 termination_status(m_dccc_n2n)
 
-z2_u = value.(m_dccc_n2n[:r_uncert])
-z2_q = value.(m_dccc_n2n[:r_sched])
-z2_l = value.(m_dccc_n2n[:r_lin])
+dual.(m_dccc_n2n[:χ])
+value.(m_dccc_n2n[:p_uncert])
+sum(value.(m_dccc_n2n[:α])[:,1])
+
+#z2_u = value.(m_dccc_n2n[:r_uncert])
+#z2_q = value.(m_dccc_n2n[:r_sched])
+#z2_l = value.(m_dccc_n2n[:r_lin])
 sum(value.(m_dccc_n2n[:p_uncert]))
 a_n2n = value.(m_dccc_n2n[:α]) * σ_vec
 sum(value.(m_dccc_n2n[:α]))
@@ -195,13 +223,8 @@ sum(value.(m_dccc_n2n[:α]))
 χ = dual.(m_dccc_n2n[:χ])
 sum(χ)
 
-## MODELS, ASYMMETRIC
-##-------------------
-
-
-
-    ## ASYMMETRIC N2N
-    ##---------------
+## ASYM
+##-----
 
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
@@ -209,25 +232,13 @@ optimize!(m_dccc_n2n_ab)
 z4 = objective_value(m_dccc_n2n_ab)
 termination_status(m_dccc_n2n_ab)
 
-z4_u = value.(m_dccc_n2n_ab[:r_uncert])
-z4_q = value.(m_dccc_n2n_ab[:r_sched])
-z4_l = value.(m_dccc_n2n_ab[:r1_lin])
-value.(m_dccc_n2n_ab[:r2_lin])
-λ_n2n_ab  = -dual.(m_dccc_n2n_ab[:mc])
-χp = dual.(m_dccc_n2n_ab[:χp])
-χm = dual.(m_dccc_n2n_ab[:χm])
-ap_n2n = value.(m_dccc_n2n_ab[:αp]) * μ_vec
-sum((value.(m_dccc_n2n_ab[:αp]) * μ_vec))
-sum(value.(m_dccc_n2n_ab[:tp1]))
+dual.(m_dccc_n2n_ab[:χp])
+dual.(m_dccc_n2n_ab[:χm])
+cp = value.(m_dccc_n2n_ab[:cp])
+ecp = value.(m_dccc_n2n_ab[:ecp])
 
-am_n2n = value.(m_dccc_n2n_ab[:αm]) * μ_vec
-sum((value.(m_dccc_n2n_ab[:αm]) * μ_vec))
-sum(value.(m_dccc_n2n_ab[:tm1]))
-
-sum(value.(m_dccc_n2n_ab[:pp_uncert]))
-sum(value.(m_dccc_n2n_ab[:pm_uncert]))
-
-
+c = ecp .- cp
+maximum(c)
 
 ## SCENARIOS σ scaling
 ##--------------------

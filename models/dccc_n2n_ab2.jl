@@ -20,6 +20,7 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @expression(m, pu_by_bus[i=1:n_buses], length(buses[i].farmids) > 0 ? sum(farms[k].μ for k in buses[i].farmids) : 0.0)
     @constraint(m, mc, B_node * θ .== p_by_bus .+ pu_by_bus .- d)
 
+    #@constraint(m, B * θ .== f)
     @constraint(m, B * θ .== f)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].u)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].u)
@@ -37,7 +38,7 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i, :])) in SecondOrderCone())
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + μ_vec' * αm[i, :] + z * pm_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μ_vec' * αp[i, :] + z * pp_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + μ_vec' * αp[i, :] + z * pp_uncert[i] <= generators[i].Pgmin)
 
     @variable(m, cp[1:n_generators] >= 0)
     @variable(m, ecp[1:n_generators] >= 0)

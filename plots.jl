@@ -19,10 +19,10 @@ for farm in farms
 
     push!(u_buses, string(farm.bus))
     push!(σ, farm.σ)
-    push!(s_lmp, λ[farm.bus] / 100)
-    push!(s_lmp_n2n, λ_ab[farm.bus] / 100)
-    push!(a_lmp, λ_n2n[farm.bus] / 100)
-    push!(a_lmp_n2n, λ_n2n_ab[farm.bus] / 100)
+    #push!(s_lmp, λ[farm.bus] / 100)
+    #push!(s_lmp_n2n, λ_ab[farm.bus] / 100)
+    #push!(a_lmp, λ_n2n[farm.bus] / 100)
+    #push!(a_lmp_n2n, λ_n2n_ab[farm.bus] / 100)
 
 end
 
@@ -54,14 +54,14 @@ rc("font", family = "serif", style = "italic", size = 14)
 rc("text", usetex = true)
 rc("lines", linewidth = 1)
 
-ax = fig.add_axes([0.1,0.15,0.895,0.825])
+ax = fig.add_axes([0.12,0.15,0.88,0.825])
 grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
 ax.tick_params(direction="in",top=true,right=true,width=1.4)
 
 #ax.set_axisbelow(true)
-ax.set_yscale("log")
+#ax.set_yscale("log")
 xlabel("\$u\$")
-ylabel("\$\\pi^{\\alpha}_{(u)},\\beta_{u},\\sigma\$")
+ylabel("\$\\chi^{(\\pm)}_{u}\$")
 ##xlim(left=-5,right=5)
 #x = [0.01 * i for i in -50000:50000]
 g_rgba
@@ -72,11 +72,11 @@ b = [χ[i] / γ for i in 1:length(u_buses)]
 bm = [χm[i] / γm for i in 1:length(u_buses)]
 bp = [χp[i] / γp for i in 1:length(u_buses)]
 
-plot(u_buses, g, color = "lightblue", mec = g_rgba[1], mfc = "white", label = "\$\\pi^{\\alpha}\$", lw = 1, ls = "dashed", marker = "D", ms = 2.4, mew = 1)
-plot(u_buses, χ, color = "lightblue", mec = g_rgba[3], mfc = "white", label = "\$\\pi^{\\alpha}_{u}\$", lw = 1, ls = "dashed", marker = "s", ms = 2.4, mew = 1)
-plot(u_buses, b, color = "lightblue", mec = g_rgba[5], mfc = "white", label = "\$\\beta_{u}\$", lw = 1, ls = "dashed", marker = "+", ms = 4.6, mew = 1)
+plot(u_buses, χ, color = "lightblue", mec = g_rgba[1], mfc = "white", label = "\$\\chi_{u}\$", lw = 1, ls = "dashed", marker = "D", ms = 2.4, mew = 1)
+plot(u_buses, χp, color = "lightblue", mec = g_rgba[3], mfc = "white", label = "\$\\chi^{+}_{u}\$", lw = 1, ls = "dashed", marker = "s", ms = 2.4, mew = 1)
+plot(u_buses, χm, color = "lightblue", mec = g_rgba[5], mfc = "white", label = "\$\\chi^{-}_{u}\$", lw = 1, ls = "dashed", marker = "+", ms = 4.6, mew = 1)
 
-plot(u_buses, pw(σ_vec), color = "black", mec = "black", mfc = "white", label = "\$\\sigma\$", lw = 1, ls = "dashed", marker = "o", ms = 2.4, mew = 1)
+#plot(u_buses, pw(σ_vec), color = "black", mec = "black", mfc = "white", label = "\$\\sigma\$", lw = 1, ls = "dashed", marker = "o", ms = 2.4, mew = 1)
 
 legend(loc = "upper right",fancybox=false, edgecolor="black")
 savefig(string("plots//beta_u_sym.pdf"), format = :pdf)

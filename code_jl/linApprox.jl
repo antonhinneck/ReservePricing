@@ -28,7 +28,7 @@ function approx(generators::Vector{Generator}, g::Int64, segments::Int64)
     return coords, coefs
 end
 
-coords, coefs = approx(generators, 1, 16)
+coords, coefs = approx(generators, 1, 8)
 n_coefs = length(coefs)
 
 fig = figure(figsize=(8, 6))
@@ -42,7 +42,7 @@ ax.tick_params(direction = "in", top = true, right = true, width = 1.4)
 
 ylabel("\$c(p_{1})\$")
 xlabel("\$p_{1}\$")
-#xlim(left = 0, right = 0.3)
+xlim(left = 0, right = 0.6)
 #ylim(bottom = -100, top = 600)
 
 quad_x = [range(coords[1][1], 1, step = 0.01);]
