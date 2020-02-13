@@ -16,20 +16,18 @@ include("code_jl/input.jl")
 
 case_data = load("data//118bus.jld")
 buses = case_data["buses"]
-[g.Pgmin for g in generators]
-
-for g in generators g.Pgmin = g.Pgmax * 0.8 end
 
 lines = case_data["lines"]
 line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
-thermalLimitscale = 4.5
+thermalLimitscale = 5
 for i in 1:length(lines)
     lines[i].u = 1.0 * thermalLimitscale * line_limits[i] / 100 #0.99
 end
 
 case_data = load("data//118bus.jld")
 generators = case_data["generators"]
-for g in generators g.Pgmax = g.Pgmax * 0.6 end
+#for g in generators g.Pgmax = g.Pgmax end
+for g in generators g.Pgmin = g.Pgmax * 0.4 end
 
 [g.Pgmax for g in generators]
 
