@@ -27,8 +27,8 @@ function build_dccc_ab(generators, buses, lines, farms)
     @constraint(m, γp, sum(αp[i] for i in 1:n_generators) == 1)
     @constraint(m, γm, sum(αm[i] for i in 1:n_generators) == 1)
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + z * αm[i] * s <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * αp[i] * s <= generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + (ν + z) * αm[i] * s <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + (ν + z) * αp[i] * s <= generators[i].Pgmin)
 
     @variable(m, cp[1:n_generators] >= 0)
     @constraint(m, approx[i in 1:n_generators, j in 1:n_coefs], cp[i] >= coefs[j][1] * p[i] + coefs[j][2])

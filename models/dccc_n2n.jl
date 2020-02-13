@@ -27,22 +27,19 @@ function build_dccc_n2n(generators, buses, lines, farms)
 
     @variable(m, p_uncert[1:n_generators] >= 0)
     @expression(m, norm, α * Σ_rt)
-    #@constraint(m, sum(p_uncert[i] for i in 1:n_generators) == s)
     @constraint(m, uncert_gen[i in 1:n_generators], vec(vcat(p_uncert[i], norm[i, :])) in SecondOrderCone())
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= generators[i].Pgmin)
-    #@constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].Pgmax)
-    #@constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= generators[i].Pgmin)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= -generators[i].Pgmin)
 
-    @variable(m, cp[1:n_generators] >= 0)
-    @variable(m, ecp[1:n_generators] >= 0)
+    #@variable(m, cp[1:n_generators] >= 0)
+    #@variable(m, ecp[1:n_generators] >= 0)
 
-    @constraint(m, det_approx[i in 1:n_generators, j in 1:n_coefs], cp[i] >= coefs[j][1] * p[i] + coefs[j][2])
-    @constraint(m, unc_approx[i in 1:n_generators, j in 1:n_coefs], ecp[i] >= cp[i])# + 0.5 * coefs[j][1] * ((αm[i, :] - αp[i, :])' * μ_vec)
+    #@constraint(m, det_approx[i in 1:n_generators, j in 1:n_coefs], cp[i] >= coefs[j][1] * p[i] + coefs[j][2])
+    #@constraint(m, unc_approx[i in 1:n_generators, j in 1:n_coefs], ecp[i] >= cp[i])# + 0.5 * coefs[j][1] * ((αm[i, :] - αp[i, :])' * μ_vec)
 
-    @expression(m, costs, sum(ecp[i]  for i in 1:n_generators))
-    #=
+    #@expression(m, costs, sum(ecp[i]  for i in 1:n_generators))
+
     ## Linear Cost
     ##------------
     @variable(m, r_lin >= 0)
@@ -53,14 +50,14 @@ function build_dccc_n2n(generators, buses, lines, farms)
     ##---------------
     @variable(m, r_uncert >= 0)
     @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * p_uncert * s)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * p_uncert)) in RotatedSecondOrderCone())
     @constraint(m, vcat(0.5, r_sched, C_rt * p) in RotatedSecondOrderCone())
     @expression(m, quad_cost, r_sched + r_uncert)
 
     ## Objective
     ##----------
-    #@objective(m, Min, r_lin + quad_cost)=#
-    @objective(m, Min, costs)
+    @objective(m, Min, r_lin + quad_cost)
+    #@objective(m, Min, costs)
 
     return m
 

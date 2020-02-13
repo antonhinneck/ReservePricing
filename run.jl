@@ -4,23 +4,22 @@ include("code_jl/input.jl")
 
 case_data = load("data//118bus.jld")
 buses = case_data["buses"]
-#lines = case_data["lines"]
 generators = case_data["generators"]
 
 n_buses = size(buses, 1)
 n_generators = size(generators, 1)
-n_lines = size(lines, 1)
 
 slack_bus = findall(b -> b.kind == :Ref, buses)[1]
-x_vec = [l.x for l in lines]
-X = diagm(0 => x_vec)
 
 lines = case_data["lines"]
 line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
-thermalLimitscale = 2
+thermalLimitscale = 1
 for i in 1:length(lines)
-    lines[i].u = 0.99 * thermalLimitscale * line_limits[i] / 100 #0.99
+    lines[i].u = 1.0 * thermalLimitscale * line_limits[i] / 100 #0.99
 end
+n_lines = size(lines, 1)
+x_vec = [l.x for l in lines]
+X = diagm(0 => x_vec)
 
 A = zeros(n_lines, n_buses)
 for i in 1:n_buses
@@ -73,29 +72,68 @@ C_rt = sqrt(C_mat)
 ##-----------------
 ## Models
 ##-----------------
-
+case_data = load("data//118bus.jld")
 generators = case_data["generators"]
 
-include("models/dccc_det.jl")
-m_dccc_det = build_dccc_det(generators, buses, lines, farms)
-optimize!(m_dccc_det)
-@assert termination_status(m_dccc_det) == MOI.TerminationStatusCode(1) "The deterministic Model is infeasible."
-objective_value(m_dccc_det)
+include("models/dccc_unconstrained.jl")
+m_dccc_unconstrained = build_dccc_unconstrained(generators, buses, lines, farms)
+optimize!(m_dccc_unconstrained)
+@assert termination_status(m_dccc_unconstrained) == MOI.TerminationStatusCode(1) "The deterministic Model is infeasible."
+objective_value(m_dccc_unconstrained)
+dual.(m_dccc_unconstrained[:χp])
 
-deterministic_generation = value.(m_dccc_det[:p])
+unconstrained_generation = value.(m_dccc_unconstrained[:p])
 
-for (i, g) in enumerate(generators) g.Pgmin = 0.4 * deterministic_generation[i] end
+for (i, g) in enumerate(generators)
+     g.Pgmin = unconstrained_generation[i] - 0.05#18
+     g.Pgmax = unconstrained_generation[i] + 0.05#18
+end
+
+include("models/dccc.jl")
+m_dccc = build_dccc(generators, buses, lines, farms)
+optimize!(m_dccc)
+z1 = objective_value(m_dccc)
+termination_status(m_dccc)
+z1_u = value.(m_dccc[:det_c])
+value.(m_dccc[:p])
+a_s = value.(m_dccc[:α]) #* sum(σ_vec)
+λ = -dual.(m_dccc[:mc])
+γ = dual.(m_dccc[:γ])
+
+
+
+include("models/dccc_n2n.jl")
+m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
+optimize!(m_dccc_n2n)
+z2 = objective_value(m_dccc_n2n)
+termination_status(m_dccc_n2n)
+dual.(m_dccc_n2n[:χ])
+
+
+include("models/dccc_ab.jl")
+m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
+optimize!(m_dccc_ab)
+dual.(m_dccc_ab[:γp])
+z3 = objective_value(m_dccc_ab)
+z3_up = value.(m_dccc_ab[:det_c])
+z3_um = value.(m_dccc_ab[:unc_c])
+ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
+am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
+λ_ab  = -dual.(m_dccc_ab[:mc])
 
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
 optimize!(m_dccc_n2n_ab)
 z4 = objective_value(m_dccc_n2n_ab)
-
+termination_status(m_dccc_n2n_ab)
 χp = dual.(m_dccc_n2n_ab[:χp])
 χm = dual.(m_dccc_n2n_ab[:χm])
 #dual.(m_dccc_n2n_ab[:χm])
 
 value.(m_dccc_n2n_ab[:cp])
+value.(m_dccc_n2n_ab[:ecp])
+
+print(unconstrained_generation)
 
 #[generators[i].Pgmax for i in 1:n_generators]
 ## MODELS
@@ -103,7 +141,7 @@ value.(m_dccc_n2n_ab[:cp])
 
 ## SYMMETRIC SYSTEM-WIDE
 ##----------------------
-
+#=
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
 
@@ -363,4 +401,4 @@ TexTable("texTables//system.txt", headings1, headings2, body, types, 2)
 
 include("plots.jl")
 
-include("save_data.jl")
+include("save_data.jl")=#
