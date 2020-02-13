@@ -1,99 +1,26 @@
-using Pkg
-using CSV
-using LinearAlgebra, Distributions
-using JuMP
-using Mosek, MosekTools
-using PyPlot, Colors
-using JLD
-import Base: sqrt
-
-function sqrt(array::Vector{T} where T <: Number)
-    return [sqrt(el) for el in array]
-end
-
 cd(@__DIR__)
+include("pkgs.jl")
 include("code_jl/input.jl")
 
 case_data = load("data//118bus.jld")
 buses = case_data["buses"]
-
-lines = case_data["lines"]
-line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
-thermalLimitscale = 5
-for i in 1:length(lines)
-    lines[i].u = 1.0 * thermalLimitscale * line_limits[i] / 100 #0.99
-end
-
-case_data = load("data//118bus.jld")
+#lines = case_data["lines"]
 generators = case_data["generators"]
-#for g in generators g.Pgmax = g.Pgmax end
-for g in generators g.Pgmin = g.Pgmax * 0.4 end
-
-[g.Pgmax for g in generators]
-
-total_gen = sum([g.Pgmax for g in generators])
-total_dem = sum([b.Pd for b in buses])
-
-include("code_jl/utils.jl")
-include("models/dccc.jl")
-include("code_jl/linApprox.jl")
-
-slack_bus = findall(b -> b.kind == :Ref, buses)[1]
-
-x_vec = [l.x for l in lines]
-X = diagm(0 => x_vec)
-
-wind_buses = [3, 8, 11, 20, 24, 26, 31, 38, 43, 49, 53]
-wind_cpcty = [70.0, 147.0, 102.0, 105.0, 113.0, 84.0, 59.0, 250.0, 118.0, 76.0, 72.0]
-
-function create_wind_farms(buses::Vector{Int64}, capacity::Vector{Float64}; scaling_sigma = 2.0, scaling_cap = 1.0)
-
-    @assert length(buses) == length(capacity)
-    farms = Vector{Farm}()
-    nf = length(buses)
-    capacity = capacity * scaling_cap
-
-    for i in 1:nf
-        push!(farms,  Farm(capacity[i] / 100, scaling_sigma * capacity[i] / 10 / 100, buses[i]))
-    end
-
-    σ_vec = [i.σ^2 for i in farms]
-
-    Σ = diagm(0 => (σ_vec))
-    s_sq = sum(Σ)
-    Σ_rt = sqrt(Σ)
-    s = sum(Σ_rt)
-
-    return farms, nf, σ_vec, Σ, s_sq, Σ_rt, s
-end
-
-farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms(wind_buses, wind_cpcty)
-
-u_buses = [f.bus for f in farms]
-μ_vec = [f.μ for f in farms]
-ν = sum(μ_vec)
-
-
-for (i,f) in enumerate(farms)
-    push!(buses[f.bus].farmids, i)
-end
 
 n_buses = size(buses, 1)
 n_generators = size(generators, 1)
 n_lines = size(lines, 1)
 
-## Stochastic parameters
-##----------------------
+slack_bus = findall(b -> b.kind == :Ref, buses)[1]
+x_vec = [l.x for l in lines]
+X = diagm(0 => x_vec)
 
-
-
-ϵ = 0.001
-z = quantile(Normal(0,1), 1-ϵ)
-p_U = [f.μ for f in farms]
-
-## Define B marix
-## Code (based on how .index value is determined) does not work for an arbitrary pglib dataset.
-## Sometimes, indexes are unique, but not in 1 ... n_lines or 1 ... n_buses.
+lines = case_data["lines"]
+line_limits = [ 175	175	500	175	175	175	500	500	500	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	500	500	500	175	175	500	175	500	175	175	140	175	175	175	175	175	175	175	175	500	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	500	500	500	500	500	500	500	175	175	500	175	500	175	175	500	500	175	175	175	175	175	175	175	500	175	175	175	175	175	175	500	500	175	500	500	200	200	175	175	175	500	500	175	175	500	500	500	175	500	500	175	175	175	175	175	175	175	175	175	175	200	175	175	175	175	175	175	175	175	175	500	175	175	175	175	175	175	175	175	175	175	175	175	175	175	175	500	175	175	175	500	175	175	175]
+thermalLimitscale = 2
+for i in 1:length(lines)
+    lines[i].u = 0.99 * thermalLimitscale * line_limits[i] / 100 #0.99
+end
 
 A = zeros(n_lines, n_buses)
 for i in 1:n_buses
@@ -109,24 +36,60 @@ for i in 1:n_buses
     end
 end
 
-x_vec = [l.x for l in lines]
-X = diagm(0 => x_vec)
-
 B = X ^ (-1) * A
 B_node = A' * B
 
 d = [b.Pd for b in buses]
+sum([b.Pd for b in buses])
+sum([g.Pgmax for g in generators])
+
+include("code_jl/linApprox.jl")
+
+include("code_jl//farms.jl")
+farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms()
+
+u_buses = [f.bus for f in farms]
+μ_vec = [f.μ for f in farms]
+p_U = μ_vec
+ν = sum(μ_vec)
+
+for (i,f) in enumerate(farms)
+    push!(buses[f.bus].farmids, i)
+end
+
+## Stochastic parameters
+##----------------------
+
+ϵ = 0.01
+z = quantile(Normal(0,1), 1-ϵ)
 
 ## Generation costs
 ##-----------------
+
 c_vec = [g.pi1  for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
 
+##-----------------
+## Models
+##-----------------
+
+generators = case_data["generators"]
+
+include("models/dccc_det.jl")
+m_dccc_det = build_dccc_det(generators, buses, lines, farms)
+optimize!(m_dccc_det)
+@assert termination_status(m_dccc_det) == MOI.TerminationStatusCode(1) "The deterministic Model is infeasible."
+objective_value(m_dccc_det)
+
+deterministic_generation = value.(m_dccc_det[:p])
+
+for (i, g) in enumerate(generators) g.Pgmin = 0.4 * deterministic_generation[i] end
+
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
 optimize!(m_dccc_n2n_ab)
-obj_n2n_ab = objective_value(m_dccc_n2n_ab)
+z4 = objective_value(m_dccc_n2n_ab)
 
 χp = dual.(m_dccc_n2n_ab[:χp])
 χm = dual.(m_dccc_n2n_ab[:χm])
@@ -224,17 +187,25 @@ sum(χ)
 ## ASYM
 ##-----
 
+
+
+for i in 1:n_generators
+    generators[i].Pgmin = deterministic_generation[i] * 0.5
+    #generators[i].Pgmax = deterministic_generation[i] * 1.4
+end
+
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
 optimize!(m_dccc_n2n_ab)
 z4 = objective_value(m_dccc_n2n_ab)
 termination_status(m_dccc_n2n_ab)
 
-dual.(m_dccc_n2n_ab[:χp])
-dual.(m_dccc_n2n_ab[:χm])
+d1 = dual.(m_dccc_n2n_ab[:χp])
+d2 = dual.(m_dccc_n2n_ab[:χm])
 cp = value.(m_dccc_n2n_ab[:cp])
 ecp = value.(m_dccc_n2n_ab[:ecp])
 
+d = abs.(d1) .- abs.(d2)
 c = ecp .- cp
 maximum(c)
 
