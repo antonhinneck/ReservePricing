@@ -75,19 +75,19 @@ C_rt = sqrt(C_mat)
 case_data = load("data//118bus.jld")
 generators = case_data["generators"]
 
-include("models/dccc_unconstrained.jl")
-m_dccc_unconstrained = build_dccc_unconstrained(generators, buses, lines, farms)
-optimize!(m_dccc_unconstrained)
-@assert termination_status(m_dccc_unconstrained) == MOI.TerminationStatusCode(1) "The deterministic Model is infeasible."
-objective_value(m_dccc_unconstrained)
-dual.(m_dccc_unconstrained[:χp])
+include("models/dccc_det.jl")
+m_dccc_det = build_dccc_det(generators, buses, lines, farms)
+optimize!(m_dccc_det)
 
-unconstrained_generation = value.(m_dccc_unconstrained[:p])
+reference_production = value.(m_dccc_det[:p])
 
 for (i, g) in enumerate(generators)
-     g.Pgmin = unconstrained_generation[i] - 0.05#18
-     g.Pgmax = unconstrained_generation[i] + 0.05#18
+     g.Pgmin = maximum([reference_production[i] - 0.05, g.Pgmin])
+     g.Pgmax = minimum([reference_production[i] + 0.05, g.Pgmax])
 end
+
+# z = 0.01, dccc +- 0.1591
+# z = 0.01, dccc_n2n +- 0.05
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
@@ -100,14 +100,14 @@ a_s = value.(m_dccc[:α]) #* sum(σ_vec)
 λ = -dual.(m_dccc[:mc])
 γ = dual.(m_dccc[:γ])
 
-
-
 include("models/dccc_n2n.jl")
 m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 optimize!(m_dccc_n2n)
 z2 = objective_value(m_dccc_n2n)
 termination_status(m_dccc_n2n)
+sum(dual.(m_dccc_n2n[:χ]))
 dual.(m_dccc_n2n[:χ])
+value.(m_dccc_n2n[:unc_c])
 
 
 include("models/dccc_ab.jl")

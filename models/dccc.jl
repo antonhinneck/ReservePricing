@@ -36,6 +36,7 @@ function build_dccc(generators, buses, lines, farms)
 
     ## Generation Cost
     ##----------------
+
     @variable(m, d_con >= 0)
     @variable(m, d_lin >= 0)
     @variable(m, d_quad >= 0)

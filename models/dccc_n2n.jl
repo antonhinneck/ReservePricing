@@ -27,6 +27,7 @@ function build_dccc_n2n(generators, buses, lines, farms)
 
     @variable(m, p_uncert[1:n_generators] >= 0)
     @expression(m, norm, α * Σ_rt)
+
     @constraint(m, uncert_gen[i in 1:n_generators], vec(vcat(p_uncert[i], norm[i, :])) in SecondOrderCone())
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].Pgmax)
@@ -40,24 +41,27 @@ function build_dccc_n2n(generators, buses, lines, farms)
 
     #@expression(m, costs, sum(ecp[i]  for i in 1:n_generators))
 
-    ## Linear Cost
-    ##------------
-    @variable(m, r_lin >= 0)
-    @expression(m, linear_cost, sum(p[i] * generators[i].pi2 + generators[i].pi3 for i in 1:n_generators))
-    @constraint(m, r_lin == linear_cost)
+    ## Generation Cost
+    ##----------------
 
-    ## Quadratic Cost
+    @variable(m, d_con >= 0)
+    @variable(m, d_lin >= 0)
+    @variable(m, d_quad >= 0)
+    @constraint(m, d_con == sum(generators[i].pi3 for i in 1:n_generators))
+    @constraint(m, d_lin == sum(p[i] * generators[i].pi2 for i in 1:n_generators))
+    @constraint(m, vec(vcat(0.5, d_quad, C_rt * p)) in RotatedSecondOrderCone())
+    @expression(m, det_c, d_con + d_lin + d_quad)
+
+    ## Balancing Cost
     ##---------------
-    @variable(m, r_uncert >= 0)
-    @variable(m, r_sched >= 0)
-    @constraint(m, vec(vcat(0.5, r_uncert, C_rt * p_uncert)) in RotatedSecondOrderCone())
-    @constraint(m, vcat(0.5, r_sched, C_rt * p) in RotatedSecondOrderCone())
-    @expression(m, quad_cost, r_sched + r_uncert)
+
+    @variable(m, u_quad >= 0)
+    @constraint(m, vec(vcat(0.5, u_quad, C_rt * p_uncert)) in RotatedSecondOrderCone())
+    @expression(m, unc_c, u_quad)
 
     ## Objective
     ##----------
-    @objective(m, Min, r_lin + quad_cost)
-    #@objective(m, Min, costs)
+    @objective(m, Min, unc_c + det_c)
 
     return m
 
