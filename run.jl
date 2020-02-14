@@ -72,19 +72,21 @@ C_rt = sqrt(C_mat)
 ##-----------------
 ## Models
 ##-----------------
-case_data = load("data//118bus.jld")
-generators = case_data["generators"]
+function updateGen(min::Float64, max::Float64)
 
-include("models/dccc_det.jl")
-m_dccc_det = build_dccc_det(generators, buses, lines, farms)
-optimize!(m_dccc_det)
+    @assert min >= 0 && min <= 1 && max <= 1 && max >= 0 "Values must be between 0 and 1."
 
-reference_production = value.(m_dccc_det[:p])
+    case_data = load("data//118bus.jld")
+    generators = case_data["generators"]
 
-for (i, g) in enumerate(generators)
-     g.Pgmin = maximum([reference_production[i] - 0.05, g.Pgmin])
-     g.Pgmax = minimum([reference_production[i] + 0.05, g.Pgmax])
+    for (i, g) in enumerate(generators)
+         g.Pgmin = g.Pgmax * min
+         g.Pgmax = g.Pgmax * max
+    end
+    return case_data, generators
 end
+
+case_data, generators = updateGen(0.2, 0.9)
 
 # z = 0.01, dccc +- 0.1591
 # z = 0.01, dccc_n2n +- 0.05
@@ -95,6 +97,7 @@ optimize!(m_dccc)
 z1 = objective_value(m_dccc)
 termination_status(m_dccc)
 z1_u = value.(m_dccc[:det_c])
+z1_u = value.(m_dccc[:unc_c])
 value.(m_dccc[:p])
 a_s = value.(m_dccc[:α]) #* sum(σ_vec)
 λ = -dual.(m_dccc[:mc])
