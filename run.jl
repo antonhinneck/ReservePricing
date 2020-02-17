@@ -86,7 +86,7 @@ function updateGen(min::Float64, max::Float64)
     return case_data, generators
 end
 
-case_data, generators = updateGen(0.2, 0.9)
+case_data, generators = updateGen(0.3, 0.50)
 
 # z = 0.01, dccc +- 0.1591
 # z = 0.01, dccc_n2n +- 0.05
@@ -108,6 +108,8 @@ m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 optimize!(m_dccc_n2n)
 z2 = objective_value(m_dccc_n2n)
 termination_status(m_dccc_n2n)
+value.(m_dccc_n2n[:unc_c])
+value.(m_dccc_n2n[:det_c])
 sum(dual.(m_dccc_n2n[:χ]))
 dual.(m_dccc_n2n[:χ])
 value.(m_dccc_n2n[:unc_c])
