@@ -13,7 +13,7 @@ function approx(generators::Vector{Generator}, g::Int64; error = 10e-9)
 
     left = generators[g].Pgmin
     right = generators[g].Pgmax
-    segments = ceil(right) * 9
+    segments = ceil(right) * 10
     stepsize = (right - left) / segments
     coords = Vector{Tuple{Float64, Float64}}()
     coefs = Vector{Tuple{Float64, Float64}}()
