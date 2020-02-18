@@ -57,22 +57,22 @@ for (i,f) in enumerate(farms)
 end
 
 ## Stochastic parameters
-##----------------------
-coefs
+########################
+
 ϵ = 0.01
 z = quantile(Normal(0,1), 1-ϵ)
 za = quantile(Normal(0,1), 1-ϵ/2)
 
-## Generation costs
-##-----------------
+## Generation Costs
+###################
 
 c_vec = [g.pi1  for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
 
-##-----------------
 ## Models
-##-----------------
+#########
+
 function updateGen(min::Float64, max::Float64)
 
     @assert min >= 0 && min <= 1 && max <= 1 && max >= 0 "Values must be between 0 and 1."
@@ -88,16 +88,9 @@ function updateGen(min::Float64, max::Float64)
 end
 
 #case_data, generators = updateGen(0.28, 0.6)
-case_data, generators = updateGen(0.2, 0.6)
+case_data, generators = updateGen(0.15, 0.5)
 # z = 0.01, dccc +- 0.1591
 # z = 0.01, dccc_n2n +- 0.05
-
-include("models/dccc_approx.jl")
-m_dccc_prx = build_dccc_prx(generators, buses, lines, farms)
-optimize!(m_dccc_prx)
-objective_value(m_dccc_prx)
-prx_p = value.(m_dccc_prx[:p])
-dual.(m_dccc_prx[:γ])
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
@@ -139,7 +132,7 @@ am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
 value.(m_dccc_ab[:αp])
 value.(m_dccc_ab[:αm])
 println(value.(m_dccc_ab[:αm]))
-dual.(m_dccc_ab[:cc2])
+sum(dual.(m_dccc_ab[:cc1]))
 value.(m_dccc_ab[:det_c])
 
 include("models/dccc_n2n_ab.jl")
