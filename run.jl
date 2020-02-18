@@ -58,7 +58,7 @@ end
 
 ## Stochastic parameters
 ##----------------------
-
+coefs
 ϵ = 0.01
 z = quantile(Normal(0,1), 1-ϵ)
 
@@ -86,10 +86,16 @@ function updateGen(min::Float64, max::Float64)
     return case_data, generators
 end
 
-case_data, generators = updateGen(0.3, 0.50)
-
+#case_data, generators = updateGen(0.28, 0.6)
+case_data, generators = updateGen(0.2, 0.6)
 # z = 0.01, dccc +- 0.1591
 # z = 0.01, dccc_n2n +- 0.05
+
+include("models/dccc_approx.jl")
+m_dccc_prx = build_dccc_prx(generators, buses, lines, farms)
+optimize!(m_dccc_prx)
+objective_value(m_dccc_prx)
+prx_p = value.(m_dccc_prx[:p])
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
@@ -102,6 +108,7 @@ value.(m_dccc[:p])
 a_s = value.(m_dccc[:α]) #* sum(σ_vec)
 λ = -dual.(m_dccc[:mc])
 γ = dual.(m_dccc[:γ])
+dccc_p = value.(m_dccc[:p])
 
 include("models/dccc_n2n.jl")
 m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
@@ -112,7 +119,6 @@ value.(m_dccc_n2n[:unc_c])
 value.(m_dccc_n2n[:det_c])
 sum(dual.(m_dccc_n2n[:χ]))
 dual.(m_dccc_n2n[:χ])
-value.(m_dccc_n2n[:unc_c])
 
 
 include("models/dccc_ab.jl")
@@ -120,11 +126,15 @@ m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
 optimize!(m_dccc_ab)
 dual.(m_dccc_ab[:γp])
 z3 = objective_value(m_dccc_ab)
-z3_up = value.(m_dccc_ab[:det_c])
-z3_um = value.(m_dccc_ab[:unc_c])
+sum(value.(m_dccc_ab[:ucp]))
+sum(value.(m_dccc_ab[:cp]))
+z3_up = value.(m_dccc_ab[:ucp])
+z3_um = value.(m_dccc_ab[:cp])
 ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
 am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
 λ_ab  = -dual.(m_dccc_ab[:mc])
+γp = dual.(m_dccc_ab[:γp])
+γm = dual.(m_dccc_ab[:γm])
 
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)

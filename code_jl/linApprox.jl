@@ -4,10 +4,16 @@ function quadraticCosts(generators::Vector{Generator}, x::Float64, g::Int64)
 
 end
 
-function approx(generators::Vector{Generator}, g::Int64, segments::Int64)
+mutable struct aprx
+    coords::Vector{Tuple{Float64, Float64}}
+    coefs::Vector{Tuple{Float64, Float64}}
+end
+
+function approx(generators::Vector{Generator}, g::Int64; error = 10e-9)
 
     left = generators[g].Pgmin
     right = generators[g].Pgmax
+    segments = ceil(right) * 8
     stepsize = (right - left) / segments
     coords = Vector{Tuple{Float64, Float64}}()
     coefs = Vector{Tuple{Float64, Float64}}()
@@ -18,7 +24,8 @@ function approx(generators::Vector{Generator}, g::Int64, segments::Int64)
         y1 = quadraticCosts(generators, x1, g)
         m = (y1 - y0) / (x1 - x0)
         n = y1 - m * x1
-        @assert n == y0 - m * x0
+        #println(string(n,"----",y0 - m * x0))
+        @assert abs(n - (y0 - m * x0)) <= error
         push!(coefs, (m,n))
         if i == 1
             push!(coords, (x0,x0))
@@ -28,7 +35,13 @@ function approx(generators::Vector{Generator}, g::Int64, segments::Int64)
     return coords, coefs
 end
 
-coords, coefs = approx(generators, 1, 8)
+my_aprxs = Vector{aprx}()
+for i in 1:n_generators
+    push!(my_aprxs, aprx(approx(generators, i)...))
+end
+
+coords = my_aprxs[1].coords
+coefs = my_aprxs[1].coefs
 n_coefs = length(coefs)
 
 fig = figure(figsize=(8, 6))
