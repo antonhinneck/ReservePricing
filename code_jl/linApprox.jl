@@ -24,7 +24,6 @@ function approx(generators::Vector{Generator}, g::Int64; error = 10e-9)
         y1 = quadraticCosts(generators, x1, g)
         m = (y1 - y0) / (x1 - x0)
         n = y1 - m * x1
-        #println(string(n,"----",y0 - m * x0))
         @assert abs(n - (y0 - m * x0)) <= error
         push!(coefs, (m,n))
         if i == 1
@@ -39,7 +38,7 @@ my_aprxs = Vector{aprx}()
 for i in 1:n_generators
     push!(my_aprxs, aprx(approx(generators, i)...))
 end
-
+my_aprxs
 coords = my_aprxs[1].coords
 coefs = my_aprxs[1].coefs
 n_coefs = length(coefs)

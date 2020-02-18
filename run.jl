@@ -61,6 +61,7 @@ end
 coefs
 ϵ = 0.01
 z = quantile(Normal(0,1), 1-ϵ)
+za = quantile(Normal(0,1), 1-ϵ/2)
 
 ## Generation costs
 ##-----------------
@@ -96,6 +97,7 @@ m_dccc_prx = build_dccc_prx(generators, buses, lines, farms)
 optimize!(m_dccc_prx)
 objective_value(m_dccc_prx)
 prx_p = value.(m_dccc_prx[:p])
+dual.(m_dccc_prx[:γ])
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
@@ -120,11 +122,10 @@ value.(m_dccc_n2n[:det_c])
 sum(dual.(m_dccc_n2n[:χ]))
 dual.(m_dccc_n2n[:χ])
 
-
+case_data, generators = updateGen(0.58, 0.6)
 include("models/dccc_ab.jl")
 m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
 optimize!(m_dccc_ab)
-dual.(m_dccc_ab[:γp])
 z3 = objective_value(m_dccc_ab)
 sum(value.(m_dccc_ab[:ucp]))
 sum(value.(m_dccc_ab[:cp]))
@@ -135,6 +136,8 @@ am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
 λ_ab  = -dual.(m_dccc_ab[:mc])
 γp = dual.(m_dccc_ab[:γp])
 γm = dual.(m_dccc_ab[:γm])
+value.(m_dccc_ab[:αp])
+value.(m_dccc_ab[:αm])
 
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
