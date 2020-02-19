@@ -38,7 +38,10 @@ my_aprxs = Vector{aprx}()
 for i in 1:n_generators
     push!(my_aprxs, aprx(approx(generators, i)...))
 end
-my_aprxs
+
+## Plot Figure
+##############
+
 coords = my_aprxs[5].coords
 coefs = my_aprxs[5].coefs
 n_coefs = length(coefs)
@@ -54,33 +57,15 @@ ax.tick_params(direction = "in", top = true, right = true, width = 1.4)
 
 ylabel("\$c(p_{5})\$")
 xlabel("\$p_{5}\$")
-#xlim(left = 0, right = 0.6)
-#ylim(bottom = -100, top = 600)
 
 quad_x = [range(coords[1][1], coords[length(coords)][1], step = 0.05);]
 quad_y = [quadraticCosts(generators, val, 5) for val in quad_x]
 
 c10 = [5 / 255, 160 / 255, 250 / 255]
 c20 = [5 / 255, 160 / 255, 250 / 255]
-#c20 = [0 / 255, 100 / 255, 255 / 255]
 c1 = RGBA(c10..., 1.0)
 c2 = RGBA(c20..., 1.0)
 grad, grad_rgba, grad_rgb = gradient(c1, c2, length(coords))
-#cm = PyPlot.LinearSegmentedColormap.from_list("Linear Approximations", [Tuple(c10), Tuple(c20)], length(grad_rgba))
-
-xdescent = 0
-ydescent = 0
-width = 4
-height = 1
-num_stripes = length(grad_rgba)
-stripes = Vector{Any}()
-for i in 1:num_stripes
-    s = PyPlot.matplotlib.patches.Rectangle([xdescent + i * width / num_stripes, ydescent],
-                          width / num_stripes,
-                          height,
-                          fc=cm((2 * i + 1) / (2 * num_stripes)))
-            push!(stripes, s)
-end
 
 for i in 1:length(coefs)
     x1 = coords[1][1]

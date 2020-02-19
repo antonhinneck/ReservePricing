@@ -88,8 +88,6 @@ function updateGen(min::Float64, max::Float64)
     return case_data, generators
 end
 
-[g.Pgmax for g in generators]
-
 #case_data, generators = updateGen(0.28, 0.6)
 #case_data, generators = updateGen(0.15, 0.5)
 # z = 0.01, dccc +- 0.1591
