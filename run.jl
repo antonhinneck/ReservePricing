@@ -1,6 +1,7 @@
 cd(@__DIR__)
 include("pkgs.jl")
 include("code_jl/input.jl")
+include("code_jl/gradients.jl")
 
 case_data = load("data//118bus.jld")
 buses = case_data["buses"]
@@ -87,35 +88,36 @@ function updateGen(min::Float64, max::Float64)
     return case_data, generators
 end
 
+[g.Pgmax for g in generators]
+
 #case_data, generators = updateGen(0.28, 0.6)
-case_data, generators = updateGen(0.15, 0.5)
+#case_data, generators = updateGen(0.15, 0.5)
 # z = 0.01, dccc +- 0.1591
 # z = 0.01, dccc_n2n +- 0.05
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
 optimize!(m_dccc)
-z1 = objective_value(m_dccc)
 termination_status(m_dccc)
-z1_u = value.(m_dccc[:det_c])
+z1 = objective_value(m_dccc)
+z1_d = value.(m_dccc[:det_c])
 z1_u = value.(m_dccc[:unc_c])
-value.(m_dccc[:p])
 a_s = value.(m_dccc[:α]) #* sum(σ_vec)
-λ = -dual.(m_dccc[:mc])
+λ_s = -dual.(m_dccc[:mc])
 γ = dual.(m_dccc[:γ])
-dccc_p = value.(m_dccc[:p])
+p_s = value.(m_dccc[:p])
 
 include("models/dccc_n2n.jl")
 m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 optimize!(m_dccc_n2n)
-z2 = objective_value(m_dccc_n2n)
 termination_status(m_dccc_n2n)
-value.(m_dccc_n2n[:unc_c])
-value.(m_dccc_n2n[:det_c])
-sum(dual.(m_dccc_n2n[:χ]))
-dual.(m_dccc_n2n[:χ])
+z2 = objective_value(m_dccc_n2n)
+z2_d = value.(m_dccc_n2n[:det_c])
+z2_u = value.(m_dccc_n2n[:unc_c])
+λ_s_n2n = -dual.(m_dccc_n2n[:mc])
+χ = dual.(m_dccc_n2n[:χ])
 
-case_data, generators = updateGen(0.15, 0.5)
+#case_data, generators = updateGen(0.15, 0.5)
 include("models/dccc_ab.jl")
 m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
 optimize!(m_dccc_ab)

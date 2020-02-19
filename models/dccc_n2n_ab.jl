@@ -36,8 +36,11 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, uncert_gen1[i in 1:n_generators], vec(vcat(pp_uncert[i], norm_up[i, :])) in SecondOrderCone())
     @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i, :])) in SecondOrderCone())
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + μ_vec' * αm[i, :] + za * pm_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μ_vec' * αp[i, :] + za * pp_uncert[i] <= -generators[i].Pgmin)
+    @expression(m, μαm, αm * μ_vec)
+    @expression(m, μαp, αp * μ_vec)
+
+    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] + za * pm_uncert[i] <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] + za * pp_uncert[i] <= -generators[i].Pgmin)
 
     @variable(m, cp[1:n_generators] >= 0)
     @variable(m, ecp[1:n_generators] >= 0)
