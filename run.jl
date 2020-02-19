@@ -71,9 +71,6 @@ c_vec = [g.pi1  for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
 
-## Models
-#########
-
 function updateGen(min::Float64, max::Float64)
 
     @assert min >= 0 && min <= 1 && max <= 1 && max >= 0 "Values must be between 0 and 1."
@@ -88,10 +85,8 @@ function updateGen(min::Float64, max::Float64)
     return case_data, generators
 end
 
-#case_data, generators = updateGen(0.28, 0.6)
-#case_data, generators = updateGen(0.15, 0.5)
-# z = 0.01, dccc +- 0.1591
-# z = 0.01, dccc_n2n +- 0.05
+## Models
+#########
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
@@ -115,7 +110,6 @@ z2_u = value.(m_dccc_n2n[:unc_c])
 λ_s_n2n = -dual.(m_dccc_n2n[:mc])
 χ = dual.(m_dccc_n2n[:χ])
 
-#case_data, generators = updateGen(0.15, 0.5)
 include("models/dccc_ab.jl")
 m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
 optimize!(m_dccc_ab)
@@ -129,143 +123,21 @@ am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
 λ_ab  = -dual.(m_dccc_ab[:mc])
 γp = dual.(m_dccc_ab[:γp])
 γm = dual.(m_dccc_ab[:γm])
-value.(m_dccc_ab[:αp])
-value.(m_dccc_ab[:αm])
-println(value.(m_dccc_ab[:αm]))
-sum(dual.(m_dccc_ab[:cc1]))
-value.(m_dccc_ab[:det_c])
 
-case_data, generators = updateGen(0.12, 0.6)
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
 optimize!(m_dccc_n2n_ab)
-z4 = objective_value(m_dccc_n2n_ab)
 termination_status(m_dccc_n2n_ab)
-χp = dual.(m_dccc_n2n_ab[:χp])
-χm = dual.(m_dccc_n2n_ab[:χm])
-
 sum(value.(m_dccc_n2n_ab[:cp]))
 sum(value.(m_dccc_n2n_ab[:ecp]))
-
-print(unconstrained_generation)
-
-
-#=
-#[generators[i].Pgmax for i in 1:n_generators]
-## MODELS
-##------------------
-=#
-## SYMMETRIC SYSTEM-WIDE
-##----------------------
-#=
-include("models/dccc.jl")
-m_dccc = build_dccc(generators, buses, lines, farms)
-
-optimize!(m_dccc)
-z1 = objective_value(m_dccc)
-
-z1_u = value.(m_dccc[:det_c])
-#z1_q = value.(m_dccc[:unc_c])
-value.(m_dccc[:p])
-
-a_s = value.(m_dccc[:α]) #* sum(σ_vec)
-λ = -dual.(m_dccc[:mc])
-γ = dual.(m_dccc[:γ])
-
-## ASYMMETRIC SYSTEM-WIDE
-##-----------------------
-[generators[i].pi2 for i in 1:n_generators]
-[generators[i].pi1 for i in 1:n_generators]
-include("models/dccc_ab.jl")
-m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
-optimize!(m_dccc_ab)
-z3 = objective_value(m_dccc_ab)
-
-z3_up = value.(m_dccc_ab[:det_c])
-z3_um = value.(m_dccc_ab[:unc_c])
-#z3_q = value.(m_dccc_ab[:r_sched])
-# z3_l = value.(m_dccc_ab[:u_lin])
-# z3_bl = value.(m_dccc_ab[:u_bilin])
-# z3_q = value.(m_dccc_ab[:u_quad_p])
-# z3_q = value.(m_dccc_ab[:u_quad_m])
-ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
-am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
-λ_ab  = -dual.(m_dccc_ab[:mc])
-
-γp = dual.(m_dccc_ab[:γp])
-γm = dual.(m_dccc_ab[:γm])
-#m_dccc_ab[:δp]
-diff = ap .- am
-#=
-@inline function evalGap(m::JuMP.Model)
-
-    act_p = value.(m[:tp0])
-    act_m = value.(m[:tm0])
-
-    ub_p = value.(m[:δp]) .* value.(m[:p])
-    ub_m = value.(m[:δm]) .* value.(m[:p])
-
-    return act_p, ub_p, act_m, ub_m
-
-end
-
-evalGap(m_dccc_ab)=#
-
-## NODE-TO-NODE
-##-------------
-
-## SYM
-##----
-
-include("models/dccc_n2n.jl")
-m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
-
-optimize!(m_dccc_n2n)
-z2 = objective_value(m_dccc_n2n)
-termination_status(m_dccc_n2n)
-
-dual.(m_dccc_n2n[:χ])
-value.(m_dccc_n2n[:p_uncert])
-sum(value.(m_dccc_n2n[:α])[:,1])
-
-#z2_u = value.(m_dccc_n2n[:r_uncert])
-#z2_q = value.(m_dccc_n2n[:r_sched])
-#z2_l = value.(m_dccc_n2n[:r_lin])
-sum(value.(m_dccc_n2n[:p_uncert]))
-a_n2n = value.(m_dccc_n2n[:α]) * σ_vec
-sum(value.(m_dccc_n2n[:α]))
-λ_n2n  = -dual.(m_dccc_n2n[:mc])
-χ = dual.(m_dccc_n2n[:χ])
-sum(χ)
-
-## ASYM
-##-----
-
-
-
-for i in 1:n_generators
-    generators[i].Pgmin = deterministic_generation[i] * 0.5
-    #generators[i].Pgmax = deterministic_generation[i] * 1.4
-end
-
-include("models/dccc_n2n_ab.jl")
-m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
-optimize!(m_dccc_n2n_ab)
 z4 = objective_value(m_dccc_n2n_ab)
-termination_status(m_dccc_n2n_ab)
-
-d1 = dual.(m_dccc_n2n_ab[:χp])
-d2 = dual.(m_dccc_n2n_ab[:χm])
-cp = value.(m_dccc_n2n_ab[:cp])
-ecp = value.(m_dccc_n2n_ab[:ecp])
-
-d = abs.(d1) .- abs.(d2)
-c = ecp .- cp
-maximum(c)
+χp = dual.(m_dccc_n2n_ab[:χp])
+χm = dual.(m_dccc_n2n_ab[:χm])
+λ_n2n_ab = -dual.(m_dccc_n2n_ab[:mc])
 
 ## SCENARIOS σ scaling
 ##--------------------
-
+#=
 scenarios_chi = Vector{Vector{Float64}}()
 scenarios_sigma = Vector{Vector{Float64}}()
 scenarios_zu = Vector{Float64}()
@@ -287,7 +159,6 @@ for i in scalings
     s_zu = value.(s_m_dccc_n2n_ab[:r_uncert])
     s_χm = dual.(s_m_dccc_n2n_ab[:χm])
 
-    #σ_vec = [i.σ for i in scenario_farms]
     s_sxs = sum(σ_vec)
 
     push!(scenarios_chi, s_χm)
@@ -298,56 +169,42 @@ for i in scalings
 
 end
 
-include("plots_scenarios_sigma.jl")
+include("plots_scenarios_sigma.jl")=#
 
-## Scenarios pen scaling
+## Scenarios limits scaling
 ##----------------------
 
-scenarios_chi = Vector{Vector{Vector{Float64}}}()
-scenarios_sigma = Vector{Vector{Vector{Float64}}}()
-scenarios_zu =  Vector{Vector{Float64}}()
-scenarios_z =  Vector{Vector{Float64}}()
-scenarios_sxs = Vector{Vector{Float64}}()
+scenarios_chiP = Vector{Vector{Float64}}()
+scenarios_chiM = Vector{Vector{Float64}}()
+scenarios_dP = Vector{Vector{Float64}}()
+scenarios_dM = Vector{Vector{Float64}}()
+scenarios_obj = Vector{Float64}()
+limits = [1.0, 0.6, 0.48]
 
-sigmas = [1.0, 2.0, 3.0, 4.0]
-scalings = [i for i in range(1, 2.0, step = 0.2)]
+for(i, l) in enumerate(limits)
 
-scenarios = [string(scalings[i]) for i in 1:length(scalings)]
+    case_data, generators = updateGen(0.0, l)
 
-for j in 1:length(sigmas)
+    include("models/dccc_n2n_ab.jl")
+    sp_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
+    optimize!(sp_m_dccc_n2n_ab)
 
-    push!(scenarios_chi, Vector{Vector{Float64}}())
-    push!(scenarios_sigma, Vector{Vector{Float64}}())
-    push!(scenarios_zu, Vector{Float64}())
-    push!(scenarios_z, Vector{Float64}())
-    push!(scenarios_sxs, Vector{Float64}())
+    zp = objective_value(sp_m_dccc_n2n_ab)
 
-    for i in scalings
+    sp_χp = dual.(sp_m_dccc_n2n_ab[:χp])
+    sp_χm = dual.(sp_m_dccc_n2n_ab[:χm])
+    sp_δp = dual.(sp_m_dccc_n2n_ab[:cc1])
+    sp_δm = dual.(sp_m_dccc_n2n_ab[:cc2])
 
-        global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, scaling_sigma = sigmas[j], scaling_cap = i)
+    push!(scenarios_chiP, sp_χp)
+    push!(scenarios_chiM, sp_χm)
+    push!(scenarios_dP, sp_δp)
+    push!(scenarios_dM, sp_δm)
+    push!(scenarios_obj, zp)
 
-        include("models/dccc_n2n_ab.jl")
-        sp_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
-        optimize!(sp_m_dccc_n2n_ab)
-
-        zp = objective_value(sp_m_dccc_n2n_ab)
-
-        sp_zu = value.(sp_m_dccc_n2n_ab[:r_uncert])
-        sp_χm = dual.(sp_m_dccc_n2n_ab[:χm])
-
-        σ_vec = [i.σ for i in scenario_farms]
-        sp_sxs = sum(σ_vec)
-
-        push!(scenarios_chi[j], sp_χm)
-        push!(scenarios_sigma[j], σ_vec)
-        push!(scenarios_zu[j], sp_zu)
-        push!(scenarios_z[j], zp)
-        push!(scenarios_sxs[j], sp_sxs)
-
-    end
 end
 
-include("plots_scenarios_pen.jl")
+include("plots_scenarios_limits.jl")
 
 ## EXPORT
 ##-------
@@ -417,6 +274,4 @@ TexTable("texTables//system.txt", headings1, headings2, body, types, 2)
 
 include("plots.jl")
 
-include("save_data.jl")=#
-
-(9.791 - 7.62) * 110
+include("save_data.jl")
