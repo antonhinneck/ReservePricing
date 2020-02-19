@@ -2,6 +2,7 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
 
     ## Model
     ##------
+
     output_level = 1
     m = Model(with_optimizer(Mosek.Optimizer,  MSK_IPAR_LOG=output_level))
 
@@ -38,6 +39,7 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
 
     @expression(m, μαm, αm * μ_vec)
     @expression(m, μαp, αp * μ_vec)
+    @expression(m, δ, (αm - αp) * μ_vec'')
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] + za * pm_uncert[i] <= generators[i].Pgmax)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] + za * pp_uncert[i] <= -generators[i].Pgmin)
@@ -45,8 +47,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @variable(m, cp[1:n_generators] >= 0)
     @variable(m, ecp[1:n_generators] >= 0)
 
-    @constraint(m, det_approx[i in 1:n_generators, j in 1:n_coefs], cp[i] >= my_aprxs[i].coefs[j][1] * p[i] + my_aprxs[i].coefs[j][2])
-    @constraint(m, unc_approx[i in 1:n_generators, j in 1:n_coefs], ecp[i] >= cp[i] + 0.5 * my_aprxs[i].coefs[j][1] * ((αm[i, :] - αp[i, :])' * μ_vec))
+    @constraint(m, det_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], cp[i] >= my_aprxs[i].coefs[j][1] * p[i] + my_aprxs[i].coefs[j][2])
+    @constraint(m, unc_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], ecp[i] >= cp[i] + 0.5 * my_aprxs[i].coefs[j][1] * δ[i])
 
     @expression(m, costs, sum(ecp[i]  for i in 1:n_generators))
 

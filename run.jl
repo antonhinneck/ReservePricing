@@ -135,6 +135,7 @@ println(value.(m_dccc_ab[:αm]))
 sum(dual.(m_dccc_ab[:cc1]))
 value.(m_dccc_ab[:det_c])
 
+case_data, generators = updateGen(0.12, 0.6)
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
 optimize!(m_dccc_n2n_ab)
@@ -143,16 +144,17 @@ termination_status(m_dccc_n2n_ab)
 χp = dual.(m_dccc_n2n_ab[:χp])
 χm = dual.(m_dccc_n2n_ab[:χm])
 
-
-value.(m_dccc_n2n_ab[:cp])
-value.(m_dccc_n2n_ab[:ecp])
+sum(value.(m_dccc_n2n_ab[:cp]))
+sum(value.(m_dccc_n2n_ab[:ecp]))
 
 print(unconstrained_generation)
 
+
+#=
 #[generators[i].Pgmax for i in 1:n_generators]
 ## MODELS
 ##------------------
-
+=#
 ## SYMMETRIC SYSTEM-WIDE
 ##----------------------
 #=
@@ -416,3 +418,5 @@ TexTable("texTables//system.txt", headings1, headings2, body, types, 2)
 include("plots.jl")
 
 include("save_data.jl")=#
+
+(9.791 - 7.62) * 110
