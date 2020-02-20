@@ -88,13 +88,13 @@ end
 ## Models
 #########
 
+case_data, generators = updateGen(0.0, 0.48)
+
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
 optimize!(m_dccc)
 termination_status(m_dccc)
 z1 = objective_value(m_dccc)
-z1_d = value.(m_dccc[:det_c])
-z1_u = value.(m_dccc[:unc_c])
 a_s = value.(m_dccc[:α]) #* sum(σ_vec)
 λ_s = -dual.(m_dccc[:mc])
 γ = dual.(m_dccc[:γ])

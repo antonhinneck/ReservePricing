@@ -33,17 +33,20 @@ function build_dccc_n2n(generators, buses, lines, farms)
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].Pgmax)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= -generators[i].Pgmin)
 
-    #@variable(m, cp[1:n_generators] >= 0)
-    #@variable(m, ecp[1:n_generators] >= 0)
+    @variable(m, cp[1:n_generators] >= 0)
 
-    #@constraint(m, det_approx[i in 1:n_generators, j in 1:n_coefs], cp[i] >= coefs[j][1] * p[i] + coefs[j][2])
-    #@constraint(m, unc_approx[i in 1:n_generators, j in 1:n_coefs], ecp[i] >= cp[i])# + 0.5 * coefs[j][1] * ((αm[i, :] - αp[i, :])' * μ_vec)
+    @constraint(m, det_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], cp[i] >= my_aprxs[i].coefs[j][1] * p[i] + my_aprxs[i].coefs[j][2])
 
-    #@expression(m, costs, sum(ecp[i]  for i in 1:n_generators))
+    @expression(m, costs, sum(cp[i]  for i in 1:n_generators))
+
+    ## Objective
+    ##----------
+
+    @objective(m, Min, costs)
 
     ## Generation Cost
     ##----------------
-
+    #=
     @variable(m, d_con >= 0)
     @variable(m, d_lin >= 0)
     @variable(m, d_quad >= 0)
@@ -61,7 +64,7 @@ function build_dccc_n2n(generators, buses, lines, farms)
 
     ## Objective
     ##----------
-    @objective(m, Min, unc_c + det_c)
+    @objective(m, Min, unc_c + det_c)=#
 
     return m
 

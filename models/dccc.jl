@@ -33,10 +33,20 @@ function build_dccc(generators, buses, lines, farms)
 
     #@expression(m, det_c, sum(cp[i] for i in 1:n_generators))
 
+    @variable(m, cp[1:n_generators] >= 0)
+
+    @constraint(m, det_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], cp[i] >= my_aprxs[i].coefs[j][1] * p[i] + my_aprxs[i].coefs[j][2])
+
+    @expression(m, costs, sum(cp[i]  for i in 1:n_generators))
+
+    ## Objective
+    ##----------
+
+    @objective(m, Min, costs)
 
     ## Generation Cost
     ##----------------
-
+    #=
     @variable(m, d_con >= 0)
     @variable(m, d_lin >= 0)
     @variable(m, d_quad >= 0)
@@ -55,7 +65,7 @@ function build_dccc(generators, buses, lines, farms)
 
     ## Objective
     ##----------
-    @objective(m, Min, det_c + unc_c)
+    @objective(m, Min, det_c + unc_c)=#
 
 
     return m
