@@ -2,6 +2,7 @@ cd(@__DIR__)
 include("pkgs.jl")
 include("code_jl/input.jl")
 include("code_jl/gradients.jl")
+include("code_jl/TruncatedGaussian.jl")
 
 case_data = load("data//118bus.jld")
 buses = case_data["buses"]
@@ -46,12 +47,26 @@ sum([g.Pgmax for g in generators])
 include("code_jl/linApprox.jl")
 
 include("code_jl//farms.jl")
-farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms()
-
+farms, n_farms, σ_sq_vec, Σ, s_sq, Σ_rt, s = create_wind_farms()
+[f.σ for f in farms]
 u_buses = [f.bus for f in farms]
 μ_vec = [f.μ for f in farms]
 p_U = μ_vec
 ν = sum(μ_vec)
+
+include("code_jl/TruncatedGaussian.jl")
+lower, upper = splitGaussians(zeros(length(μ_vec)), sqrt(σ_sq_vec), 0.0)
+μm = upper[1]
+Σm = upper[2]
+Σm_rt = upper[3]
+sm_sq = upper[4]
+sm = sqrt(sm_sq)
+μp = lower[1]
+Σp = lower[2]
+Σp_rt = lower[3]
+sp_sq = lower[4]
+sp = sqrt(sp_sq)
+sum(Σp_rt)
 
 for (i,f) in enumerate(farms)
     push!(buses[f.bus].farmids, i)

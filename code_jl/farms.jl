@@ -12,7 +12,7 @@ function create_wind_farms(;buses = [3, 8, 11, 20, 24, 26, 31, 38, 43, 49, 53], 
         push!(farms,  Farm(capacity[i] / 100, scaling_sigma * capacity[i] / 10 / 100, buses[i]))
     end
 
-    σ_vec = [i.σ^2 for i in farms]
+    σ_vec = [i.σ for i in farms]
 
     Σ = diagm(0 => (σ_vec))
     s_sq = sum(Σ)
