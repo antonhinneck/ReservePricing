@@ -26,9 +26,14 @@ function build_dccc_n2n(generators, buses, lines, farms)
     @constraint(m, χ[u in 1:n_farms], sum(α[i, u] for i in 1:n_generators) == 1)
 
     @variable(m, p_uncert[1:n_generators] >= 0)
-    @expression(m, norm, α * Σ_rt)
+    #@variable(m, alpha_rt[1:n_generators, 1:n_farms] >= 0)
 
-    @constraint(m, uncert_gen[i in 1:n_generators], vec(vcat(p_uncert[i], norm[i, :])) in SecondOrderCone())
+    #@constraint(m, root[i in 1:n_generators, f in 1:n_farms], 1.0 * [0.5, alpha_rt[i, f], α[i, f]]  in RotatedSecondOrderCone())
+
+    @expression(m, norm, α * Σ) #α
+
+    #@constraint(m, uncert_gen[i in 1:n_generators], vec(vcat(p_uncert[i], norm[i, :])) in SecondOrderCone())
+    @constraint(m, uncert_gen[i in 1:n_generators], p_uncert[i] == sum(norm[i, :]))
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].Pgmax)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= -generators[i].Pgmin)

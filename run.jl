@@ -60,7 +60,7 @@ lower, upper = splitGaussians(zeros(length(μ_vec)), sqrt(σ_sq_vec), 0.0)
 Σm = upper[2]
 Σm_rt = upper[3]
 sm_sq = upper[4]
-sm = sqrt(sm_sq)
+sm = sum(Σm_rt)#sqrt(sm_sq)
 μp = lower[1]
 Σp = lower[2]
 Σp_rt = lower[3]
@@ -103,7 +103,7 @@ end
 ## Models
 #########
 
-case_data, generators = updateGen(0.0, 0.48)
+#case_data, generators = updateGen(0.0, 1.0)
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
@@ -120,10 +120,11 @@ m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 optimize!(m_dccc_n2n)
 termination_status(m_dccc_n2n)
 z2 = objective_value(m_dccc_n2n)
-z2_d = value.(m_dccc_n2n[:det_c])
-z2_u = value.(m_dccc_n2n[:unc_c])
+#z2_d = value.(m_dccc_n2n[:det_c])
+#z2_u = value.(m_dccc_n2n[:unc_c])
 λ_s_n2n = -dual.(m_dccc_n2n[:mc])
-χ = dual.(m_dccc_n2n[:χ])
+α = sum(value.(m_dccc_n2n[:α]))
+#χ = dual.(m_dccc_n2n[:χ])
 
 include("models/dccc_ab.jl")
 m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
