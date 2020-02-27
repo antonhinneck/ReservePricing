@@ -22,6 +22,7 @@ function build_dccc_n2n(generators, buses, lines, farms)
     @constraint(m, B * θ .== f)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].u)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].u)
+    @constraint(m, test[i in 1:n_generators, u in 2:n_farms], α[i, u] == α[i, 1])
 
     @constraint(m, χ[u in 1:n_farms], sum(α[i, u] for i in 1:n_generators) == 1)
 
@@ -30,28 +31,28 @@ function build_dccc_n2n(generators, buses, lines, farms)
 
     #@constraint(m, root[i in 1:n_generators, f in 1:n_farms], 1.0 * [0.5, alpha_rt[i, f], α[i, f]]  in RotatedSecondOrderCone())
 
-    @expression(m, norm, α * Σ) #α
+    @expression(m, norm, α * Σ_rt) #α
 
-    #@constraint(m, uncert_gen[i in 1:n_generators], vec(vcat(p_uncert[i], norm[i, :])) in SecondOrderCone())
-    @constraint(m, uncert_gen[i in 1:n_generators], p_uncert[i] == sum(norm[i, :]))
+    @constraint(m, uncert_gen[i in 1:n_generators], vcat(p_uncert[i], norm[i, :]) in SecondOrderCone())
+    #@constraint(m, uncert_gen[i in 1:n_generators], p_uncert[i] == sum(norm[i, :]))
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].Pgmax)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= -generators[i].Pgmin)
 
-    @variable(m, cp[1:n_generators] >= 0)
+    #@variable(m, cp[1:n_generators] >= 0)
 
-    @constraint(m, det_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], cp[i] >= my_aprxs[i].coefs[j][1] * p[i] + my_aprxs[i].coefs[j][2])
+    #@constraint(m, det_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], cp[i] >= my_aprxs[i].coefs[j][1] * p[i] + my_aprxs[i].coefs[j][2])
 
-    @expression(m, costs, sum(cp[i]  for i in 1:n_generators))
+    #@expression(m, costs, sum(cp[i]  for i in 1:n_generators))
 
     ## Objective
     ##----------
 
-    @objective(m, Min, costs)
+    #@objective(m, Min, costs)
 
     ## Generation Cost
     ##----------------
-    #=
+
     @variable(m, d_con >= 0)
     @variable(m, d_lin >= 0)
     @variable(m, d_quad >= 0)
@@ -69,7 +70,7 @@ function build_dccc_n2n(generators, buses, lines, farms)
 
     ## Objective
     ##----------
-    @objective(m, Min, unc_c + det_c)=#
+    @objective(m, Min, unc_c + det_c)
 
     return m
 
