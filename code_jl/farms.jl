@@ -17,8 +17,8 @@ function create_wind_farms(;buses = [3, 8, 11, 20, 24, 26, 31, 38, 43, 49, 53], 
     Σ = diagm(0 => (σ_vec.^2))
     s_sq = sum(Σ)
     Σ_rt = sqrt(Σ)
-    s = sum(Σ_rt)
+    s = sqrt(s_sq)
+    println(string("s: ",s,"---s: ",sum(Σ_rt)))
 
     return farms, nf, σ_vec, Σ, s_sq, Σ_rt, s
 end
-[i.σ for i in farms]

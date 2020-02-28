@@ -100,13 +100,15 @@ function updateGen(min::Float64, max::Float64)
     return case_data, generators
 end
 
-## Models
-#########
+## Experiments
+##############
+## System-Wide VS Node-To-Node
+##############################
 
-case_data, generators = updateGen(0.0, 0.9)
+case_data, generators = updateGen(0.32, 0.46)
 
-include("models/dccc.jl")
-m_dccc = build_dccc(generators, buses, lines, farms)
+include("models/dccc_sym.jl")
+m_dccc = build_dccc_sym(generators, buses, lines, farms)
 optimize!(m_dccc)
 termination_status(m_dccc)
 z1 = objective_value(m_dccc)
@@ -121,32 +123,42 @@ y = [z * value.(m_dccc[:α])[i] * s for i in 1:n_generators]
 mi = y .+ [g.Pgmin for g in generators]
 ma = [g.Pgmax for g in generators] .- y
 
-for i in 1:length(ma)
-    if abs(value.(m_dccc[:p] .- mi[i])[i]) >= 10e-2# &&  >= 10e-3
-        println(cc2[i])
-    end
-end
-
-#abs(value.(ma[i] .- m_dccc[:p])[i]) >= 10e-2
-#abs(value.(m_dccc[:p] - mi[i])[i]) <= 10e-3
-
-include("models/dccc_n2n.jl")
-m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
+include("models/dccc_n2n_sym.jl")
+m_dccc_n2n = build_dccc_n2n_sym(generators, buses, lines, farms)
 optimize!(m_dccc_n2n)
 termination_status(m_dccc_n2n)
 z2 = objective_value(m_dccc_n2n)
-#z2_d = value.(m_dccc_n2n[:det_c])
-#z2_u = value.(m_dccc_n2n[:unc_c])
 λ_s_n2n = -dual.(m_dccc_n2n[:mc])
 α = value.(m_dccc_n2n[:α])
 unc = sum(value.(m_dccc_n2n[:unc_c]))
 sum(value.(m_dccc_n2n[:p_uncert]))
-sum([sqrt(v) for v in value.(m_dccc_n2n[:p_uncert])])
 χ = dual.(m_dccc_n2n[:χ])
 sum(dual.(m_dccc_n2n[:χ]))
-value.(m_dccc_n2n[:α]) * Σ * value.(m_dccc_n2n[:α])'
-sum([α[i, :]' * Σ * α[i, :] for i in 1:n_generators])
-sum(α)
+
+for i in χ
+    print(string(round(i, digits = 2),"&"))
+end
+for i in χ
+    print(string("-","&"))
+end
+## Symmetric VS Asymmetric
+##########################
+
+include("models/dccc.jl")
+m_dccc = build_dccc_sym(generators, buses, lines, farms)
+optimize!(m_dccc)
+termination_status(m_dccc)
+z1 = objective_value(m_dccc)
+a_s = value.(m_dccc[:α]) #* sum(σ_vec)
+λ_s = -dual.(m_dccc[:mc])
+γ = dual.(m_dccc[:γ])
+p_s = value.(m_dccc[:p])
+unc_c = value.(m_dccc[:unc_c])
+cc1 = -dual.(m_dccc[:cc1])
+cc2 = -dual.(m_dccc[:cc2])
+y = [z * value.(m_dccc[:α])[i] * s for i in 1:n_generators]
+mi = y .+ [g.Pgmin for g in generators]
+ma = [g.Pgmax for g in generators] .- y
 
 include("models/dccc_ab.jl")
 m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
@@ -161,6 +173,18 @@ am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
 λ_ab  = -dual.(m_dccc_ab[:mc])
 γp = dual.(m_dccc_ab[:γp])
 γm = dual.(m_dccc_ab[:γm])
+
+include("models/dccc_n2n.jl")
+m_dccc_n2n = build_dccc_n2n_sym(generators, buses, lines, farms)
+optimize!(m_dccc_n2n)
+termination_status(m_dccc_n2n)
+z2 = objective_value(m_dccc_n2n)
+λ_s_n2n = -dual.(m_dccc_n2n[:mc])
+α = value.(m_dccc_n2n[:α])
+unc = sum(value.(m_dccc_n2n[:unc_c]))
+sum(value.(m_dccc_n2n[:p_uncert]))
+χ = dual.(m_dccc_n2n[:χ])
+sum(dual.(m_dccc_n2n[:χ]))
 
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
