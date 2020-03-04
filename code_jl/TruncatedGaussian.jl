@@ -6,13 +6,20 @@ end
 
 function splitGaussian(dist::Distributions.Gaussian, center::T where T <: Real)
 
+    sigma = dist.σ
+    stdNormal = Distributions.Gaussian(0,1)
+
+    my_pdf = pdf(stdNormal, center)
+    my_cdf = cdf(stdNormal, center)
+    my_revCdf = 1 - cdf(stdNormal, center)
+
     ## Upper truncated gaussian
-    μ_u = dist.μ + dist.σ * pdf(dist, center) / (1 - cdf(dist, center))
-    σ_sq_u = dist.σ^2 * (1 - center * pdf(dist, center) / (1 - cdf(dist, center)) -  (pdf(dist, center) / (1 - cdf(dist, center)))^2)
+    μ_u = dist.μ + dist.σ * (my_pdf / my_revCdf)
+    σ_sq_u = dist.σ^2 * (1 - center * my_pdf / my_revCdf -  (my_pdf / my_revCdf)^2)
 
     ## Lower truncated gaussian
-    μ_l = dist.μ + dist.σ * pdf(dist, center) / cdf(dist, center)
-    σ_sq_l = dist.σ^2 * (1 - center * pdf(dist, center) / cdf(dist, center) -  (pdf(dist, center) / cdf(dist, center))^2)
+    μ_l = dist.μ + dist.σ * my_pdf / my_cdf
+    σ_sq_l = dist.σ^2 * (1 - center * my_pdf / my_cdf - (my_pdf / my_cdf)^2)
 
     return [μ_l, σ_sq_l], [μ_u, σ_sq_u]
 end
@@ -40,12 +47,12 @@ function splitGaussians(means::Vector{T} where T <: Real, variances::Vector{T} w
     upper_μ = abs(upper_μ)
     upper_σ = abs(upper_σ)
 
-    Σm = diagm(0 => (upper_σ.^2))
+    Σm = diagm(0 => (upper_σ))
     Σm_rt = sqrt(Σm)
     sm_sq = sum(Σm)
     upper = [lower_μ, Σm, Σm_rt, sm_sq]
 
-    Σp = diagm(0 => (lower_σ.^2))
+    Σp = diagm(0 => (lower_σ))
     Σp_rt = sqrt(Σp)
     sm_sq = sum(Σp)
     lower = [lower_μ, Σp, Σp_rt, sm_sq]

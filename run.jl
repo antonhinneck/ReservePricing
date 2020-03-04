@@ -54,19 +54,45 @@ u_buses = [f.bus for f in farms]
 p_U = μ_vec
 ν = sum(μ_vec)
 
+#g = Normal(0, 0.147)[f.σ for f in farms] .* 5
+#pdf(g, 0.0)
 include("code_jl/TruncatedGaussian.jl")
-lower, upper = splitGaussians(zeros(length(μ_vec)), sqrt(σ_sq_vec), 0.0)
+lower, upper = splitGaussians(zeros(length(μ_vec)), [f.σ for f in farms], 0.0)
 μm = upper[1]
 Σm = upper[2]
 Σm_rt = upper[3]
 sm_sq = upper[4]
-sm = sum(Σm_rt)#sqrt(sm_sq)
+sm = sqrt(sm_sq)#sqrt(sm_sq)
 μp = lower[1]
 Σp = lower[2]
 Σp_rt = lower[3]
 sp_sq = lower[4]
 sp = sqrt(sp_sq)
 sum(Σp_rt)
+
+counter = 1
+for f in farms
+    print(string(counter," & "))
+    global counter += 1
+end
+
+counter = 1
+for f in farms
+    print(string(round(f.σ, digits = 4)," & "))
+    global counter += 1
+end
+
+counter = 1
+for f in farms
+    print(string(round(μm[counter], digits = 4)," & "))
+    global counter += 1
+end
+
+counter = 1
+for f in farms
+    print(string(round(Σm_rt[counter,counter], digits = 4)," & "))
+    global counter += 1
+end
 
 for (i,f) in enumerate(farms)
     push!(buses[f.bus].farmids, i)
@@ -105,7 +131,7 @@ end
 ## System-Wide VS Node-To-Node
 ##############################
 
-case_data, generators = updateGen(0.32, 0.46)
+case_data, generators = updateGen(0.3, 0.6)
 
 include("models/dccc_sym.jl")
 m_dccc = build_dccc_sym(generators, buses, lines, farms)
@@ -145,7 +171,7 @@ end
 ##########################
 
 include("models/dccc.jl")
-m_dccc = build_dccc_sym(generators, buses, lines, farms)
+m_dccc = build_dccc(generators, buses, lines, farms)
 optimize!(m_dccc)
 termination_status(m_dccc)
 z1 = objective_value(m_dccc)
