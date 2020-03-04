@@ -70,6 +70,19 @@ sp_sq = lower[4]
 sp = sqrt(sp_sq)
 sum(Σp_rt)
 
+sm
+s
+tn = TruncatedNormal(0,1,0,Inf64)
+z = quantile(Normal(0,1), 1 - ϵ)
+za2 = quantile(tn, 1 - 2 * ϵ)
+sym_cc = s * z
+asym_cc = sm * za2 + 0.5 * sum(μm)
+z
+za
+1/sqrt(2*pi)
+ζ = (2 * pi - 4) / pi
+ζ = 1 / ζ
+
 counter = 1
 for f in farms
     print(string(counter," & "))

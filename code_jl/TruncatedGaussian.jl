@@ -1,5 +1,8 @@
 using Distributions
 
+nrml = Distributions.Gaussian(0,1)
+pdf(nrml, 0)/cdf(nrml, 0)
+
 function millsRatio(dist::T where T <: Distributions.Distribution, x::T where T <: Real)
     return cdf(dist, x)/pdf(dist, x)
 end
@@ -29,25 +32,28 @@ function splitGaussians(means::Vector{T} where T <: Real, variances::Vector{T} w
     @assert length(means) == length(variances)
     n_dists = length(means)
     lower_μ = Vector{Float64}()
-    lower_σ = Vector{Float64}()
+    lower_σsq = Vector{Float64}()
     upper_μ = Vector{Float64}()
-    upper_σ = Vector{Float64}()
+    upper_σsq = Vector{Float64}()
+
+    ζ = pi / (2 * pi - 4)
+    ζ = 1 / ζ
 
     for i in 1:n_dists
         dist = Distributions.Gaussian(means[i], variances[i])
         lower, upper = splitGaussian(dist, center)
         push!(lower_μ, lower[1])
-        push!(lower_σ, lower[2])
+        push!(lower_σsq, lower[2])
         push!(upper_μ, upper[1])
-        push!(upper_σ, upper[2])
+        push!(upper_σsq, upper[2])
     end
 
     lower_μ = abs(lower_μ)
-    lower_σ = abs(lower_σ)
+    lower_σ = abs(lower_σsq)
     upper_μ = abs(upper_μ)
-    upper_σ = abs(upper_σ)
+    upper_σ = abs(upper_σsq)
 
-    Σm = diagm(0 => (upper_σ))
+    Σm = diagm(0 => (upper_σsq) * ζ)
     Σm_rt = sqrt(Σm)
     sm_sq = sum(Σm)
     upper = [lower_μ, Σm, Σm_rt, sm_sq]
