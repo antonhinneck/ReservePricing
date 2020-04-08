@@ -24,38 +24,40 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @constraint(m, B * θ .== f)
     @constraint(m, flowlim1[i in 1:n_lines], f[i] <= lines[i].u)
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].u)
+    #@constraint(m, a[u in 1:n_farms, i in 1:n_generators], αm[i, u] == αp[i, u])
 
     @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
     @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
 
-    #@constraint(m, a[u in 1:n_farms, i in 1:n_generators], αm[i, u] == αp[i, u])
-
     @variable(m, pp_uncert[1:n_generators] >= 0)
     @variable(m, pm_uncert[1:n_generators] >= 0)
-    @expression(m, norm_up, αp * Σ_rt)
-    @expression(m, norm_dwn, αm * Σ_rt)
-    @constraint(m, uncert_gen1[i in 1:n_generators], vec(vcat(pp_uncert[i], norm_up[i, :])) in SecondOrderCone())
-    @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i, :])) in SecondOrderCone())
+    @expression(m, norm_up, αp * Σp_rt)
+    @expression(m, norm_dwn, αm * Σm_rt)
+    @constraint(m, uncert_gen1[i in 1:n_generators], vec(vcat(pp_uncert[i], norm_up[i,:]...)) in SecondOrderCone())
+    @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i,:]...)) in SecondOrderCone())
 
-    @expression(m, μαm, αm * μ_vec)
-    @expression(m, μαp, αp * μ_vec)
-    @expression(m, δ, (αm - αp) * μ_vec'')
+    @expression(m, μαm, αm * μm)
+    @expression(m, μαp, αp * μp)
+    @expression(m, δ, (0.5 * αm - 0.5 * αp) * μm'')
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] + za * pm_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] + za * pp_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαm[i] + za * pp_uncert[i] <= -generators[i].Pgmin)
 
     @variable(m, cp[1:n_generators] >= 0)
     @variable(m, ecp[1:n_generators] >= 0)
 
     @constraint(m, det_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], cp[i] >= my_aprxs[i].coefs[j][1] * p[i] + my_aprxs[i].coefs[j][2])
-    @constraint(m, unc_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], ecp[i] >= cp[i] + 0.5 * my_aprxs[i].coefs[j][1] * δ[i])
+    @constraint(m, unc_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], ecp[i] >= cp[i] + my_aprxs[i].coefs[j][1] * δ[i])
 
     @expression(m, costs, sum(ecp[i]  for i in 1:n_generators))
+    @expression(m, uncp, sum(pp_uncert[i]  for i in 1:n_generators))
+    @expression(m, uncm, sum(pm_uncert[i]  for i in 1:n_generators))
 
     ## Objective
     ##----------
 
     @objective(m, Min, costs)
+    # + uncp + uncm
 
     return m
 

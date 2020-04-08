@@ -3,6 +3,8 @@
 
 using JLD
 
-save("lmps//lmps.jld", "system_wide_sym", λ, "system_wide_asym", λ_ab, "n2n_sym", λ_n2n, "n2n_asym", λ_n2n_ab)
+save("lmps//lmps.jld", "sw_sym", λ_s_c, "n2n_asym", λ_n2n_ab_c)
 
 data = load("lmps//lmps.jld")
+
+minimum(λ_n2n_ab_c)

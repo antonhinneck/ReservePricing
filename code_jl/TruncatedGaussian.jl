@@ -36,8 +36,8 @@ function splitGaussians(means::Vector{T} where T <: Real, variances::Vector{T} w
     upper_μ = Vector{Float64}()
     upper_σsq = Vector{Float64}()
 
-    ζ = pi / (2 * pi - 4)
-    ζ = 1 / ζ
+
+    ζ = (2* pi) / (2 * pi - 4)
 
     for i in 1:n_dists
         dist = Distributions.Gaussian(means[i], variances[i])
@@ -53,7 +53,7 @@ function splitGaussians(means::Vector{T} where T <: Real, variances::Vector{T} w
     upper_μ = abs(upper_μ)
     upper_σ = abs(upper_σsq)
 
-    Σm = diagm(0 => (upper_σsq) * ζ)
+    Σm = diagm(0 => upper_σsq)
     Σm_rt = sqrt(Σm)
     sm_sq = sum(Σm)
     upper = [lower_μ, Σm, Σm_rt, sm_sq]

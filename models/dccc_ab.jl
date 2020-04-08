@@ -35,7 +35,7 @@ function build_dccc_ab(generators, buses, lines, farms)
     @expression(m, det_c, sum(cp[i] for i in 1:n_generators))
 
     @variable(m, ucp[1:n_generators] >= 0)
-    @constraint(m, approx2[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], ucp[i] >= 0.5 * ν * my_aprxs[i].coefs[j][1] * (αm[i] - αp[i]))
+    @constraint(m, approx2[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], ucp[i] >= 0.5 * sum(μm) * my_aprxs[i].coefs[j][1] * (αm[i] - αp[i]))
     @expression(m, unc_c, sum(ucp[i] for i in 1:n_generators))
     #=@variable(m, ucp[1:n_generators] >= 0)
     @constraint(m, approx2[i in 1:n_generators, j in 1:n_coefs], ucp[i] >= 0.5 * ν * coefs[j][1] * (αm[i] - αp[i]))

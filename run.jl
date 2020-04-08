@@ -47,15 +47,13 @@ sum([g.Pgmax for g in generators])
 include("code_jl/linApprox.jl")
 
 include("code_jl//farms.jl")
-farms, n_farms, σ_sq_vec, Σ, s_sq, Σ_rt, s = create_wind_farms()
+farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms()
 [f.σ for f in farms]
 u_buses = [f.bus for f in farms]
 μ_vec = [f.μ for f in farms]
 p_U = μ_vec
 ν = sum(μ_vec)
-
-#g = Normal(0, 0.147)[f.σ for f in farms] .* 5
-#pdf(g, 0.0)
+sqrt(0.00178)
 include("code_jl/TruncatedGaussian.jl")
 lower, upper = splitGaussians(zeros(length(μ_vec)), [f.σ for f in farms], 0.0)
 μm = upper[1]
@@ -70,18 +68,14 @@ sp_sq = lower[4]
 sp = sqrt(sp_sq)
 sum(Σp_rt)
 
-sm
-s
-tn = TruncatedNormal(0,1,0,Inf64)
-z = quantile(Normal(0,1), 1 - ϵ)
-za2 = quantile(tn, 1 - 2 * ϵ)
-sym_cc = s * z
-asym_cc = sm * za2 + 0.5 * sum(μm)
-z
-za
-1/sqrt(2*pi)
-ζ = (2 * pi - 4) / pi
-ζ = 1 / ζ
+σm = Vector{Float64}()
+for i in 1:size(Σm, 1)
+    push!(σm, Σm[i,i])
+end
+
+include("plotDists.jl")
+
+d = [b.Pd for b in buses]
 
 counter = 1
 for f in farms
@@ -116,7 +110,7 @@ end
 
 ϵ = 0.01
 z = quantile(Normal(0,1), 1-ϵ)
-za = quantile(Normal(0,1), 1-ϵ/2)
+za = quantile(Normal(0,1), 1 - ϵ / 0.5)
 
 ## Generation Costs
 ###################
@@ -141,10 +135,48 @@ end
 
 ## Experiments
 ##############
+
+## Linear Costs
+###############
+
+case_data, generators = updateGen(0.1, 0.36)
+
+include("models/dccc.jl")
+m_dccc = build_dccc(generators, buses, lines, farms)
+optimize!(m_dccc)
+termination_status(m_dccc)
+z1 = objective_value(m_dccc)
+
+include("models/dccc_sym.jl")
+m_dccc = build_dccc_sym(generators, buses, lines, farms)
+optimize!(m_dccc)
+termination_status(m_dccc)
+z2 = objective_value(m_dccc)
+
+print(z1-z2)
+
+for i in 1:11
+    print(string(i, " & "))
+end
+
+for i in 1:11
+    print(string(round(σ_vec[i], digits = 3), " & "))
+end
+
+for i in 1:11
+    print(string(round(μm[i], digits = 3), " & "))
+end
+
+for i in 1:11
+    print(string(round(σm[i], digits = 3), " & "))
+end
+
+print(sqrt(ζ2))
+
 ## System-Wide VS Node-To-Node
 ##############################
 
-case_data, generators = updateGen(0.3, 0.6)
+case_data, generators = updateGen(0.1, 0.36)
 
 include("models/dccc_sym.jl")
 m_dccc = build_dccc_sym(generators, buses, lines, farms)
@@ -153,9 +185,8 @@ termination_status(m_dccc)
 z1 = objective_value(m_dccc)
 a_s = value.(m_dccc[:α]) #* sum(σ_vec)
 λ_s = -dual.(m_dccc[:mc])
-γ = dual.(m_dccc[:γ])
+γs = dual.(m_dccc[:γ])
 p_s = value.(m_dccc[:p])
-unc_c = value.(m_dccc[:unc_c])
 cc1 = -dual.(m_dccc[:cc1])
 cc2 = -dual.(m_dccc[:cc2])
 y = [z * value.(m_dccc[:α])[i] * s for i in 1:n_generators]
@@ -169,10 +200,11 @@ termination_status(m_dccc_n2n)
 z2 = objective_value(m_dccc_n2n)
 λ_s_n2n = -dual.(m_dccc_n2n[:mc])
 α = value.(m_dccc_n2n[:α])
-unc = sum(value.(m_dccc_n2n[:unc_c]))
 sum(value.(m_dccc_n2n[:p_uncert]))
-χ = dual.(m_dccc_n2n[:χ])
+χs = dual.(m_dccc_n2n[:χ])
 sum(dual.(m_dccc_n2n[:χ]))
+
+include("plot_sys_n2n.jl")
 
 for i in χ
     print(string(round(i, digits = 2),"&"))
@@ -180,49 +212,51 @@ end
 for i in χ
     print(string("-","&"))
 end
+
 ## Symmetric VS Asymmetric
 ##########################
+
+case_data, generators = updateGen(0.1, 0.38)
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
 optimize!(m_dccc)
 termination_status(m_dccc)
 z1 = objective_value(m_dccc)
-a_s = value.(m_dccc[:α]) #* sum(σ_vec)
+a_s = value.(m_dccc[:α])
 λ_s = -dual.(m_dccc[:mc])
-γ = dual.(m_dccc[:γ])
+γs = dual.(m_dccc[:γ])
 p_s = value.(m_dccc[:p])
-unc_c = value.(m_dccc[:unc_c])
 cc1 = -dual.(m_dccc[:cc1])
 cc2 = -dual.(m_dccc[:cc2])
 y = [z * value.(m_dccc[:α])[i] * s for i in 1:n_generators]
-mi = y .+ [g.Pgmin for g in generators]
-ma = [g.Pgmax for g in generators] .- y
 
 include("models/dccc_ab.jl")
 m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
 optimize!(m_dccc_ab)
+termination_status(m_dccc_ab)
 z3 = objective_value(m_dccc_ab)
 sum(value.(m_dccc_ab[:ucp]))
 sum(value.(m_dccc_ab[:cp]))
 z3_up = value.(m_dccc_ab[:ucp])
 z3_um = value.(m_dccc_ab[:cp])
-ap = value.(m_dccc_ab[:αp]) * sum(σ_vec)
-am = value.(m_dccc_ab[:αm]) * sum(σ_vec)
+ap = value.(m_dccc_ab[:αp])
+am = value.(m_dccc_ab[:αm])
 λ_ab  = -dual.(m_dccc_ab[:mc])
 γp = dual.(m_dccc_ab[:γp])
 γm = dual.(m_dccc_ab[:γm])
+cc1 = dual.(m_dccc_ab[:cc1])
+cc2 = dual.(m_dccc_ab[:cc2])
 
 include("models/dccc_n2n.jl")
-m_dccc_n2n = build_dccc_n2n_sym(generators, buses, lines, farms)
+m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
 optimize!(m_dccc_n2n)
 termination_status(m_dccc_n2n)
 z2 = objective_value(m_dccc_n2n)
 λ_s_n2n = -dual.(m_dccc_n2n[:mc])
 α = value.(m_dccc_n2n[:α])
-unc = sum(value.(m_dccc_n2n[:unc_c]))
-sum(value.(m_dccc_n2n[:p_uncert]))
-χ = dual.(m_dccc_n2n[:χ])
+p_u = value.(m_dccc_n2n[:p_uncert])
+χs = dual.(m_dccc_n2n[:χ])
 sum(dual.(m_dccc_n2n[:χ]))
 
 include("models/dccc_n2n_ab.jl")
@@ -233,146 +267,107 @@ sum(value.(m_dccc_n2n_ab[:cp]))
 sum(value.(m_dccc_n2n_ab[:ecp]))
 z4 = objective_value(m_dccc_n2n_ab)
 χp = dual.(m_dccc_n2n_ab[:χp])
+sum(χp)
 χm = dual.(m_dccc_n2n_ab[:χm])
+sum(χm)
 λ_n2n_ab = -dual.(m_dccc_n2n_ab[:mc])
+pp_u = value.(m_dccc_n2n_ab[:pp_uncert])
+pm_u = value.(m_dccc_n2n_ab[:pm_uncert])
+value.(m_dccc_n2n_ab[:norm_up])
+value.(m_dccc_n2n_ab[:norm_dwn])
+value.(m_dccc_n2n_ab[:cc1])
+value.(m_dccc_n2n_ab[:cc2])
+am_n2n_ab = value.(m_dccc_n2n_ab[:αm])
+ap_n2n_ab = value.(m_dccc_n2n_ab[:αp])
+cc1_ab = dual.(m_dccc_ab[:cc1])
+cc2_ab = dual.(m_dccc_ab[:cc2])
 
-## SCENARIOS σ scaling
-##--------------------
-#=
-scenarios_chi = Vector{Vector{Float64}}()
-scenarios_sigma = Vector{Vector{Float64}}()
-scenarios_zu = Vector{Float64}()
-scenarios_z = Vector{Float64}()
-scenarios_sxs = Vector{Float64}()
-
-scalings = [i for i in range(1, 4, step = 0.5)]
-
-for i in scalings
-
-    global scenario_farms, nf, σ_vec, s_sq, s_rt, s, Σ_sq = create_wind_farms(wind_buses, wind_cpcty, scaling_sigma = i, scaling_cap = 1.0)
-
-    include("models/dccc_n2n_ab.jl")
-    s_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, scenario_farms)
-    optimize!(s_m_dccc_n2n_ab)
-
-    z = objective_value(s_m_dccc_n2n_ab)
-
-    s_zu = value.(s_m_dccc_n2n_ab[:r_uncert])
-    s_χm = dual.(s_m_dccc_n2n_ab[:χm])
-
-    s_sxs = sum(σ_vec)
-
-    push!(scenarios_chi, s_χm)
-    push!(scenarios_sigma, σ_vec)
-    push!(scenarios_zu, s_zu)
-    push!(scenarios_z, z)
-    push!(scenarios_sxs, s_sxs)
-
+for i in 1:11
+    print(string(round(χm[i], digits = 1)," & "))
 end
 
-include("plots_scenarios_sigma.jl")=#
-
-## Scenarios limits scaling
-##----------------------
-
-scenarios_chiP = Vector{Vector{Float64}}()
-scenarios_chiM = Vector{Vector{Float64}}()
-scenarios_dP = Vector{Vector{Float64}}()
-scenarios_dM = Vector{Vector{Float64}}()
-scenarios_obj = Vector{Float64}()
-limits = [1.0, 0.6, 0.48]
-
-for(i, l) in enumerate(limits)
-
-    case_data, generators = updateGen(0.0, l)
-
-    include("models/dccc_n2n_ab.jl")
-    sp_m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
-    optimize!(sp_m_dccc_n2n_ab)
-
-    zp = objective_value(sp_m_dccc_n2n_ab)
-
-    sp_χp = dual.(sp_m_dccc_n2n_ab[:χp])
-    sp_χm = dual.(sp_m_dccc_n2n_ab[:χm])
-    sp_δp = dual.(sp_m_dccc_n2n_ab[:cc1])
-    sp_δm = dual.(sp_m_dccc_n2n_ab[:cc2])
-
-    push!(scenarios_chiP, sp_χp)
-    push!(scenarios_chiM, sp_χm)
-    push!(scenarios_dP, sp_δp)
-    push!(scenarios_dM, sp_δm)
-    push!(scenarios_obj, zp)
-
+for i in 1:11
+    print(string(round(abs(χp[i]), digits = 1)," & "))
 end
 
-include("plots_scenarios_limits.jl")
-
-## EXPORT
-##-------
-
-headings1 = ["Model", "\$z^{*}\$", "\$z^{*}_{q}\$", "\$z^{*}_{u}\$", "\$z^{*}_{l}\$"]
-headings2 = ["","","","", ""]
-types = [Int64, Float64, Float64, Float64, Float64]
-body = hcat([1, 2, 3, 4], [z1, z2, z3, z4], [z1_q, z2_q, z3_q, z4_q], [z1_u, z2_u, z3_u, z4_u], [z1_l, z2_l, z3_l, z4_l])
-
-TexTable("texTables//objective.txt", headings1, headings2, body, types, 2)
-
-gens = Vector{Int64}()
-
-for i in 1:n_generators
-    push!(gens, generators[i].bus_idx)
+for i in 1:11
+    print(string(0.0," & "))
 end
+# sum(sum(μm) * am + za * sm * am)
+# sum(a_s * z * s) * ζ3
 
-l1 = Vector{Float64}()
-l2 = Vector{Float64}()
-l3 = Vector{Float64}()
-l4 = Vector{Float64}()
-node_idx = Vector{Int64}()
+include("plot_sym_asym.jl")
 
-for i in 1:n_farms
-    push!(node_idx, farms[i].bus)
-    push!(l1, λ[farms[i].bus] / 100)
-    push!(l2, λ_n2n[farms[i].bus] / 100)
-    push!(l3, λ_ab[farms[i].bus] / 100)
-    push!(l4, λ_n2n_ab[farms[i].bus] / 100)
-end
+## Symmetric VS Asymmetric
+##########################
 
-headings1 = ["i", "sym", "asym", "sym_n2n"]
-headings2 = ["","","",""]
-types = [Int64, Float64, Float64, Float64]
-body = hcat(node_idx, l1, l3, l2)
+case_data, generators = updateGen(0.1, 0.365)
 
-TexTable("texTables//prices.txt", headings1, headings2, body, types)
+include("models/dccc.jl")
+m_dccc = build_dccc(generators, buses, lines, farms)
+optimize!(m_dccc)
+termination_status(m_dccc)
+z1 = objective_value(m_dccc)
+a_s = value.(m_dccc[:α])
+λ_s_c = -dual.(m_dccc[:mc])
+γs = dual.(m_dccc[:γ])
+p_s = value.(m_dccc[:p])
+cc1s = -dual.(m_dccc[:cc1])
+cc2s = -dual.(m_dccc[:cc2])
+y = [z * value.(m_dccc[:α])[i] * s for i in 1:n_generators]
 
-headings1 = ["","Model", "sym", "asym", "asym", "sym", "asym", "asym"]
-headings2 = ["\$i\$", "\$c_{i}\$", "\$\\alpha_{i}\$", "\$\\alpha^{-}_{i}\$", "\$\\alpha^{+}_{i}\$", "\$e^{T}A_{i}\$", "\$e^{T}A^{-}_{i}\$", "\$e^{T}A^{+}_{i}\$"]
-types = [Int, Float64, Float64, Float64, Float64, Float64, Float64, Float64]
-body = hcat(gens, c, a_s, ap, am, a_n2n, ap_n2n, am_n2n)
+include("models/dccc_ab.jl")
+m_dccc_ab = build_dccc_ab(generators, buses, lines, farms)
+optimize!(m_dccc_ab)
+termination_status(m_dccc_ab)
+z3 = objective_value(m_dccc_ab)
+sum(value.(m_dccc_ab[:ucp]))
+sum(value.(m_dccc_ab[:cp]))
+z3_up = value.(m_dccc_ab[:ucp])
+z3_um = value.(m_dccc_ab[:cp])
+ap = value.(m_dccc_ab[:αp])
+am = value.(m_dccc_ab[:αm])
+λ_ab  = -dual.(m_dccc_ab[:mc])
+γp = dual.(m_dccc_ab[:γp])
+γm = dual.(m_dccc_ab[:γm])
+cc1s_ab = dual.(m_dccc_ab[:cc1])
+cc2s_ab = dual.(m_dccc_ab[:cc2])
 
-TexTable("texTables//alphas.txt", headings1, headings2, body, types)
+include("models/dccc_n2n.jl")
+m_dccc_n2n = build_dccc_n2n(generators, buses, lines, farms)
+optimize!(m_dccc_n2n)
+termination_status(m_dccc_n2n)
+z2 = objective_value(m_dccc_n2n)
+λ_s_n2n = -dual.(m_dccc_n2n[:mc])
+α = value.(m_dccc_n2n[:α])
+p_u = value.(m_dccc_n2n[:p_uncert])
+χs = dual.(m_dccc_n2n[:χ])
+sum(dual.(m_dccc_n2n[:χ]))
+cc1 = dual.(m_dccc_n2n[:cc1])
+cc2 = dual.(m_dccc_n2n[:cc2])
 
-s = 0
-ures_cap = 0
-gen_cap = 0
-for i in 1:n_farms
-    global ures_cap += farms[i].μ
-    global s+= farms[i].σ
-end
-for i in 1:n_generators
-    global gen_cap += generators[i].g_max
-end
-
-headings1 = ["scenario", "\$z^{*}_{\\epsilon_{g}}\$", "\$s^{2}\$", "\$\\sum_{u}\\mu_{u}\$", "\$\\sum_{i}\\bar{P}_{i}\$", "\$\\% uRES\$"]
-headings2 = ["","","","", "", ""]
-types = [Int64, Float64, Float64, Float64, Float64, Float64]
-body = hcat([1], [z], [s^2], [ures_cap], [gen_cap], [ures_cap / (ures_cap + gen_cap)])
-
-TexTable("texTables//system.txt", headings1, headings2, body, types, 2)
-
-#using DelimitedFiles
-#writedlm(string(@__DIR__,"\\alphas_sys.csv"), alphas_sys,",")
-#writedlm(string(@__DIR__,"\\alphas_i.csv"), alphas_i,",")
-
-include("plots.jl")
+include("models/dccc_n2n_ab.jl")
+m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
+optimize!(m_dccc_n2n_ab)
+termination_status(m_dccc_n2n_ab)
+sum(value.(m_dccc_n2n_ab[:cp]))
+sum(value.(m_dccc_n2n_ab[:ecp]))
+z4 = objective_value(m_dccc_n2n_ab)
+χp = dual.(m_dccc_n2n_ab[:χp])
+sum(χp)
+χm = dual.(m_dccc_n2n_ab[:χm])
+sum(χm)
+λ_n2n_ab_c = -dual.(m_dccc_n2n_ab[:mc])
+pp_u = value.(m_dccc_n2n_ab[:pp_uncert])
+pm_u = value.(m_dccc_n2n_ab[:pm_uncert])
+value.(m_dccc_n2n_ab[:norm_up])
+value.(m_dccc_n2n_ab[:norm_dwn])
+value.(m_dccc_n2n_ab[:cc1])
+value.(m_dccc_n2n_ab[:cc2])
+am_n2n_ab = value.(m_dccc_n2n_ab[:αm])
+ap_n2n_ab = value.(m_dccc_n2n_ab[:αp])
+cc1_ab_c = dual.(m_dccc_n2n_ab[:cc1])
+cc2_ab_c = dual.(m_dccc_n2n_ab[:cc2])
 
 include("save_data.jl")
+include("plot_delta.jl")
