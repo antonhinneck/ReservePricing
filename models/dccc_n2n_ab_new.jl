@@ -1,4 +1,4 @@
-function build_dccc_n2n_ab(generators, buses, lines, farms)
+function build_dccc_n2n_ab2(generators, buses, lines, farms)
 
     ## Model
     ##------
@@ -40,8 +40,8 @@ function build_dccc_n2n_ab(generators, buses, lines, farms)
     @expression(m, μαp, αp * μp)
     @expression(m, δ, (0.5 * αm - 0.5 * αp) * μm'')
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] + μαp[i] + za * pm_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] + μαm[i] + za * pp_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] + za * pm_uncert[i] <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαm[i] + za * pp_uncert[i] <= -generators[i].Pgmin)
 
     @variable(m, cp[1:n_generators] >= 0)
     @variable(m, ecp[1:n_generators] >= 0)

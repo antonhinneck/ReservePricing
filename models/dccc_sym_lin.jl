@@ -1,4 +1,4 @@
-function build_dccc(generators, buses, lines, farms)
+function build_dccc_sym_lin(generators, buses, lines, farms)
 
     ## Model
     ##------
@@ -25,8 +25,8 @@ function build_dccc(generators, buses, lines, farms)
 
     @constraint(m, γ, sum(α[i] for i in 1:n_generators) == 1)
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + zCh * α[i] * s <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + zCh * α[i] * s <= -generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + z * α[i] * s <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * α[i] * s <= -generators[i].Pgmin)
 
     #@variable(m, cp[1:n_generators] >= 0)
     #@constraint(m, approx[i in 1:n_generators, j in 1:n_coefs], cp[i] >= coefs[j][1] * p[i] + coefs[j][2])
@@ -35,7 +35,7 @@ function build_dccc(generators, buses, lines, farms)
 
     @variable(m, cp[1:n_generators] >= 0)
 
-    @constraint(m, det_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], cp[i] >= my_aprxs[i].coefs[j][1] * p[i] + my_aprxs[i].coefs[j][2])
+    @constraint(m, det_approx[i in 1:n_generators, j in 1:length(my_aprxs[i].coefs)], cp[i] >= my_aprxs[i].coefs[j][1] * (p[i]) + my_aprxs[i].coefs[j][2])
 
     @expression(m, costs, sum(cp[i]  for i in 1:n_generators))
 
@@ -44,9 +44,9 @@ function build_dccc(generators, buses, lines, farms)
 
     @objective(m, Min, costs)
 
-    ## Generation Cost
-    ##----------------
-
+    # ## Generation Cost
+    # ##----------------
+    #
     # @variable(m, d_con >= 0)
     # @variable(m, d_lin >= 0)
     # @variable(m, d_quad >= 0)
@@ -66,7 +66,6 @@ function build_dccc(generators, buses, lines, farms)
     # ## Objective
     # ##----------
     # @objective(m, Min, det_c + unc_c)
-
 
     return m
 

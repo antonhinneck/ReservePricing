@@ -1,4 +1,4 @@
-function build_dccc(generators, buses, lines, farms)
+function build_dccc_new(generators, buses, lines, farms)
 
     ## Model
     ##------

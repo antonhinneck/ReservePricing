@@ -3,10 +3,12 @@ using Distributions
 ζ1 = sqrt(2/pi)
 ζ2 = (2 * pi - 4) / (2 * pi)
 
-farms[1].σ
+#farms[1].σ
 
 d = Normal(0, 0.07)
 dT = TruncatedNormal(d.μ, d.σ, 0, Inf)
+
+cdf
 
 mean(dT)
 std(dT)

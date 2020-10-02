@@ -37,6 +37,10 @@ for i in 1:n_buses
     end
 end
 
+# for i in σ_vec
+#     print(string(i,", "))
+# end
+
 B = X ^ (-1) * A
 B_node = A' * B
 
@@ -47,8 +51,8 @@ sum([g.Pgmax for g in generators])
 include("code_jl/linApprox.jl")
 
 include("code_jl//farms.jl")
-farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms()
-[f.σ for f in farms]
+farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms(scaling_sigma = 1.0)
+σ_vec = [f.σ for f in farms]
 u_buses = [f.bus for f in farms]
 μ_vec = [f.μ for f in farms]
 p_U = μ_vec
@@ -68,10 +72,81 @@ sp_sq = lower[4]
 sp = sqrt(sp_sq)
 sum(Σp_rt)
 
+muF = [μp..., -μp...]
+ΣF = zeros(n_farms * 2,n_farms * 2)
+ΣF[1:n_farms, 1:n_farms] = diagm(σ_vec)
+ΣF[(n_farms + 1):(2 * n_farms), (n_farms + 1):(2 * n_farms)] = diagm(σ_vec)
+ΣF
+
+μm = [0 for i in farms]
+μp = [0 for i in farms]
+
 σm = Vector{Float64}()
 for i in 1:size(Σm, 1)
     push!(σm, Σm[i,i])
 end
+
+ϵ = 0.01
+d = Normal()
+z = quantile(d, 1 - ϵ)
+zCh = sqrt((1 - ϵ)/ϵ)
+dT = TruncatedNormal(μm[1], Σm_rt[1,1], 0, Inf64)
+Σm_rt[1,1] * z
+
+zn = quantile(d, 1 - (ϵ / 0.5))
+
+σ_vec
+mysum = 0
+for s in σ_vec
+    dist = Normal(0,s)
+    global mysum += quantile(dist, 1 - ϵ)
+end
+
+mysum
+z
+z * sum(σ_vec)
+σ_vec = σ_vec
+zt = Vector{Float64}()
+μm = Vector{Float64}()
+varm = Vector{Float64}()
+mysum = 0
+for i in 1:length(σ_vec)
+    dist = truncated(Normal(0, σ_vec[i]),0,Inf64)
+    #distp = truncated(Normal(0, σ_vec[i]),0,Inf64)
+    global mysum += quantile(dist, 1 - (2 * ϵ))
+    push!(zt, quantile(dist, 1 - (2 * ϵ)))
+    push!(μm, mean(dist))
+    push!(varm, var(dist))
+end
+μp = -μm
+varp = varm
+
+sum(μm)
+n = Normal(2, 0)
+nt = truncated(n,2,Inf)
+mean(nt)
+
+zz = quantile(truncated(Normal(),0,Inf), 1 - (2 * ϵ))
+
+s
+varm
+mysum
+sm
+zz * sqrt(sum(Σm))
+z * sqrt(varm)
+sum(zt)
+z
+zz
+Σm_rt
+
+sum(μm)
+z * sqrt(sum(Σm))
+z * sqrt(sum(Σ))
+zz * sqrt(sum(varm))
+
+zm = diagm(zt)
+sum(zm * Σm)
+sum(zm) * sum(Σm)
 
 include("plotDists.jl")
 
@@ -139,7 +214,66 @@ end
 ## Linear Costs
 ###############
 
-case_data, generators = updateGen(0.1, 0.36)
+# 0.1 0.39
+#
+# 105939 - 105157
+#
+#
+# 0.1 0.395
+#
+# 104911 - 104878
+#
+# 0.1 0.4
+#
+# 104611 - 104603
+include("code_jl/linApprox.jl")
+
+include("models/dccc_sym.jl")
+m_dccc = build_dccc_sym(generators, buses, lines, farms)
+optimize!(m_dccc)
+termination_status(m_dccc)
+z1 = objective_value(m_dccc)
+
+include("models/dccc_sym_lin.jl")
+m_dccc = build_dccc_sym_lin(generators, buses, lines, farms)
+optimize!(m_dccc)
+termination_status(m_dccc)
+z2 = objective_value(m_dccc)
+
+results_approx = Vector{Float64}()
+my_aprxs = Vector{aprx}()
+
+for i in 1:16
+
+    global my_aprxs = Vector{aprx}()
+    for j in 1:n_generators
+        push!(my_aprxs, aprx(approx(generators, j, segments_pu = i)...))
+    end
+
+    # To approximate the quadratic cost function, linear segments are used.
+    #     These are added as constraints. As these are greater than the function
+
+    include("models/dccc_sym_lin.jl")
+    m_dccc_lin = build_dccc_sym_lin(generators, buses, lines, farms)
+    optimize!(m_dccc_lin)
+    termination_status(m_dccc_lin)
+    push!(results_approx, objective_value(m_dccc_lin))
+
+end
+
+include("plot_approx.jl")
+
+#-----------------------------------------------------
+#-----------------------------------------------------
+mm = Model()
+@variable(mm, kp[1:n_generators] >= 0)
+@variable(mm, km[1:n_generators] >= 0)
+
+vec(vcat(kp, km)) * [μm..., μp]
+[μm..., -μm...]
+
+
+case_data, generators = updateGen(0.1, 0.39)
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
@@ -216,7 +350,7 @@ end
 ## Symmetric VS Asymmetric
 ##########################
 
-case_data, generators = updateGen(0.1, 0.38)
+case_data, generators = updateGen(0.1, 0.39)
 
 include("models/dccc.jl")
 m_dccc = build_dccc(generators, buses, lines, farms)
@@ -262,6 +396,7 @@ sum(dual.(m_dccc_n2n[:χ]))
 include("models/dccc_n2n_ab.jl")
 m_dccc_n2n_ab = build_dccc_n2n_ab(generators, buses, lines, farms)
 optimize!(m_dccc_n2n_ab)
+getobjectivevalue(m_dccc_n2n_ab)
 termination_status(m_dccc_n2n_ab)
 sum(value.(m_dccc_n2n_ab[:cp]))
 sum(value.(m_dccc_n2n_ab[:ecp]))
