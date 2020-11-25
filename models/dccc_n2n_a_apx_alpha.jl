@@ -1,4 +1,4 @@
-function build_dccc_n2n_a_apx(generators, buses, lines, farms, αm_min, αm_max, αp_min, αp_max; output_level = 0)
+function build_dccc_n2n_a_apx_alpha(generators, buses, lines, farms, αm_min, αm_max, αp_min, αp_max; output_level = 0)
 
     ## Model
     ##------
@@ -43,7 +43,7 @@ function build_dccc_n2n_a_apx(generators, buses, lines, farms, αm_min, αm_max,
     #@expression(m, δ, (0.5 * αm - 0.5 * αp) * μm'')
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + (μαm[i] - μαp[i]) + za * pm_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + (μαm[i] - μαp[i]) + za * pp_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + (μαp[i] - μαm[i]) + za * pp_uncert[i] <= -generators[i].Pgmin)
 
     ## Deterministic Costs
     ##--------------------

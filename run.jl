@@ -217,11 +217,17 @@ end
 ζ1 = (sqrt(pi / 2))
 ζ2 = (2 * pi - 4) / (2 * pi)
 
+σ_vec * sqrt(ζ2)
 
 μm = μ .+ (σ_vec .* (1 / ζ1))
 μp = μ .- (σ_vec .* (1 / ζ1))
 μms = sum(μm)
 μps = sum(μp)
+
+Σ_rt = (diagm(σ_vec))^2
+Σm_rt = diagm(σ_vec * sqrt(ζ2)).^2
+Σp_rt = Σm_rt
+sqrt(σ_vec * ζ2)
 
 ## Experiments
 ##############
@@ -528,39 +534,54 @@ function min_alg_a(iters::Int64, α_initm, α_initp; lim_init = 0.01, lim_const 
 end
 
 # α_min_initm = ones((n_generators, n_farms)) * 0.0001
-α_min_initm = sw2n2n(value.(m_dccc_a_det[:αm])) .- 0.001 # value.(m_dccc_n2n_det[:α]) # ones((n_generators, n_farms)) * 0.01
+α_min_initm = sw2n2n(value.(m_dccc_a_det[:αm])) .- 0.00 # value.(m_dccc_n2n_det[:α]) # ones((n_generators, n_farms)) * 0.01
 α_max_initm = ones((n_generators, n_farms)) * 1.0
 # α_min_initp = ones((n_generators, n_farms)) * 0.0001
-α_min_initp = sw2n2n(value.(m_dccc_a_det[:αp])) .- 0.001 # value.(m_dccc_n2n_det[:α]) # ones((n_generators, n_farms)) * 0.01
+α_min_initp = sw2n2n(value.(m_dccc_a_det[:αp])) .- 0.00 # value.(m_dccc_n2n_det[:α]) # ones((n_generators, n_farms)) * 0.01
 α_max_initp = ones((n_generators, n_farms)) * 1.0
-include("models/dccc_n2n_a_apx.jl")
-m_dccc_n2n_a_apx = build_dccc_n2n_a_apx(generators, buses, lines, farms, α_min_initm, α_max_initm, α_min_initp, α_max_initp)
-optimize!(m_dccc_n2n_a_apx)
-value(m_dccc_n2n_a_apx[:det_c])
-value(m_dccc_n2n_a_apx[:d_lin])
-value(m_dccc_n2n_a_apx[:d_con])
-value(m_dccc_n2n_a_apx[:d_quad])
-value(m_dccc_n2n_a_apx[:unc_c])
-value(m_dccc_n2n_a_apx[:u_bil])
+include("models/dccc_n2n_a_apx_alpha.jl")
+m_dccc_n2n_a_apx_alpha = build_dccc_n2n_a_apx_alpha(generators, buses, lines, farms, α_min_initm, α_max_initm, α_min_initp, α_max_initp)
+optimize!(m_dccc_n2n_a_apx_alpha)
+value(m_dccc_n2n_a_apx_alpha[:det_c])
+value(m_dccc_n2n_a_apx_alpha[:d_lin])
+value(m_dccc_n2n_a_apx_alpha[:d_con])
+value(m_dccc_n2n_a_apx_alpha[:d_quad])
+value(m_dccc_n2n_a_apx_alpha[:unc_c])
+value(m_dccc_n2n_a_apx_alpha[:u_bil])
 
-α_detm = value.(m_dccc_n2n_a_apx[:αm])
-α_detp = value.(m_dccc_n2n_a_apx[:αp])
+α_detm = value.(m_dccc_n2n_a_apx_alpha[:αm])
+α_detp = value.(m_dccc_n2n_a_apx_alpha[:αp])
+p_det = value.(m_dccc_n2n_a_apx_alpha[:p])
 
-include("models/dccc_n2n_a_det.jl")
-m_dccc_n2n_a_det = build_dccc_n2n_a_det(generators, buses, lines, farms, α_detm, α_detp)
-optimize!(m_dccc_n2n_a_det)
-termination_status(m_dccc_n2n_a_det)
-objective_value(m_dccc_n2n_a_det)
-value(m_dccc_n2n_a_det[:det_c])
-value(m_dccc_n2n_a_det[:d_lin])
-value(m_dccc_n2n_a_det[:d_con])
-value(m_dccc_n2n_a_det[:d_quad])
-value(m_dccc_n2n_a_det[:unc_c])
-value(m_dccc_n2n_a_det[:u_quad])
-value(m_dccc_n2n_a_det[:u_bil])
+include("models/dccc_n2n_a_det_alpha.jl")
+m_dccc_n2n_a_det_alpha = build_dccc_n2n_a_det_alpha(generators, buses, lines, farms, α_detm, α_detp)
+optimize!(m_dccc_n2n_a_det_alpha)
+termination_status(m_dccc_n2n_a_det_alpha)
+objective_value(m_dccc_n2n_a_det_alpha)
+value(m_dccc_n2n_a_det_alpha[:det_c])
+value(m_dccc_n2n_a_det_alpha[:d_lin])
+value(m_dccc_n2n_a_det_alpha[:d_con])
+value(m_dccc_n2n_a_det_alpha[:d_quad])
+value(m_dccc_n2n_a_det_alpha[:unc_c])
+value(m_dccc_n2n_a_det_alpha[:u_quad])
+value(m_dccc_n2n_a_det_alpha[:u_bil])
+
+include("models/dccc_n2n_a_det_p.jl")
+m_dccc_n2n_a_det_p = build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det)
+optimize!(m_dccc_n2n_a_det_p)
+termination_status(m_dccc_n2n_a_det_p)
+objective_value(m_dccc_n2n_a_det_p)
+value(m_dccc_n2n_a_det_p[:det_c])
+value(m_dccc_n2n_a_det_p[:d_lin])
+value(m_dccc_n2n_a_det_p[:d_con])
+value(m_dccc_n2n_a_det_p[:d_quad])
+value(m_dccc_n2n_a_det_p[:unc_c])
+value(m_dccc_n2n_a_det_p[:u_quad])
+value(m_dccc_n2n_a_det_p[:u_bil])
+
+include("models/dccc_n2n_a_det_alpha.jl")
 
 min_alg_a(10, α_min_initm, α_min_initp, lim_init = 0.00001, lim_const = 0.00000002)
-
 
 # results_approx = Vector{Float64}()
 # my_aprxs = Vector{aprx}()

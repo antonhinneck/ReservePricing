@@ -1,4 +1,4 @@
-function build_dccc_n2n_a_det(generators, buses, lines, farms, α_detm, α_detp; output_level = 0)
+function build_dccc_n2n_a_apx_p(generators, buses, lines, farms, αm_min, αm_max, αp_min, αp_max; output_level = 0)
 
     ## Model
     ##------
@@ -13,8 +13,8 @@ function build_dccc_n2n_a_det(generators, buses, lines, farms, α_detm, α_detp;
     @variable(m, αp[1:n_generators, 1:n_farms] >= 0)
     @variable(m, αm[1:n_generators, 1:n_farms] >= 0)
 
-    @constraint(m, fixm, αm .== α_detm)
-    @constraint(m, fixp, αp .== α_detp)
+    @constraint(m, lim1, αm .>= αm_min)
+    @constraint(m, lim2, αp .>= αp_min)
 
     ## General Constraints
     ##--------------------
@@ -40,10 +40,10 @@ function build_dccc_n2n_a_det(generators, buses, lines, farms, α_detm, α_detp;
 
     @expression(m, μαm, αm * μm)
     @expression(m, μαp, αp * μp)
-    #@expression(m, δ, (2.0 * αm - 2.0 * αp) * μm'')
+    #@expression(m, δ, (0.5 * αm - 0.5 * αp) * μm'')
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + (μαm[i] - μαp[i]) + za * pm_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + (μαm[i] - μαp[i]) + za * pp_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + (μαp[i] - μαm[i]) + za * pp_uncert[i] <= -generators[i].Pgmin)
 
     ## Deterministic Costs
     ##--------------------
@@ -61,22 +61,31 @@ function build_dccc_n2n_a_det(generators, buses, lines, farms, α_detm, α_detp;
 
     # Quadratic
     #----------
-    @variable(m, u_quadm >= 0)
-    @variable(m, u_quadp >= 0)
-    @expression(m, u_quad, u_quadm + u_quadp)
-    @expression(m, norm_m, α_detm * Σm_rt)
-    @expression(m, norm_p, α_detp * Σp_rt)
+    @variable(m, u_quad >= 0)
+    @expression(m, norm_m, αm * Σ_rt)
+    @expression(m, norm_p, αp * Σ_rt)
     @constraint(m, uncert_gen_m[i in 1:n_generators], vcat(pm_uncert[i], norm_m[i, :]) in SecondOrderCone())
     @constraint(m, uncert_gen_p[i in 1:n_generators], vcat(pp_uncert[i], norm_p[i, :]) in SecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quad, C_rt * pm_uncert)) in RotatedSecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quad, C_rt * pp_uncert)) in RotatedSecondOrderCone())
 
     ## McCormick Envelope
     ##-------------------
     @variable(m, u_bil >= 0)
-    @expression(m, μAm, α_detm * μm)
-    @expression(m, μAp, α_detp * μp)
-    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * (μAm[g] - μAp[g]) for g in 1:n_generators) == u_bil)
+    @variable(m, Ψm[1:n_generators, 1:n_farms] >= 0)
+    @variable(m, Ψp[1:n_generators, 1:n_farms] >= 0)
+
+    @constraint(m, aprx1m[g in 1:n_generators, f in 1:n_farms], Ψm[g, f] >= αm[g, f] * generators[g].Pgmin + αm_min[g, f] * p[g] - αm_min[g, f] * generators[g].Pgmin)
+    @constraint(m, aprx2m[g in 1:n_generators, f in 1:n_farms], Ψm[g, f] >= αm[g, f] * generators[g].Pgmax + αm_max[g, f] * p[g] - αm_max[g, f] * generators[g].Pgmax)
+    @constraint(m, aprx3m[g in 1:n_generators, f in 1:n_farms], Ψm[g, f] <= αm[g, f] * generators[g].Pgmax + αm_min[g, f] * p[g] - αm_min[g, f] * generators[g].Pgmax)
+    @constraint(m, aprx4m[g in 1:n_generators, f in 1:n_farms], Ψm[g, f] <= αm[g, f] * generators[g].Pgmin + αm_max[g, f] * p[g] - αm_max[g, f] * generators[g].Pgmin)
+
+    @constraint(m, aprx1p[g in 1:n_generators, f in 1:n_farms], Ψp[g, f] >= αp[g, f] * generators[g].Pgmin + αp_min[g, f] * p[g] - αp_min[g, f] * generators[g].Pgmin)
+    @constraint(m, aprx2p[g in 1:n_generators, f in 1:n_farms], Ψp[g, f] >= αp[g, f] * generators[g].Pgmax + αp_max[g, f] * p[g] - αp_max[g, f] * generators[g].Pgmax)
+    @constraint(m, aprx3p[g in 1:n_generators, f in 1:n_farms], Ψp[g, f] <= αp[g, f] * generators[g].Pgmax + αp_min[g, f] * p[g] - αp_min[g, f] * generators[g].Pgmax)
+    @constraint(m, aprx4p[g in 1:n_generators, f in 1:n_farms], Ψp[g, f] <= αp[g, f] * generators[g].Pgmin + αp_max[g, f] * p[g] - αp_max[g, f] * generators[g].Pgmin)
+
+    @expression(m, μΨm, Ψm * μm)
+    @expression(m, μΨp, Ψp * μp)
+    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * (μΨm[g] - μΨp[g]) for g in 1:n_generators) == u_bil)
 
     @expression(m, unc_c, u_quad + u_bil)
 

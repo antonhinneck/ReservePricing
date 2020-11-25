@@ -28,8 +28,9 @@ function build_dccc_a_det(generators, buses, lines, farms, αm_det::Array{T, 1} 
     @variable(m, αp[1:n_generators] >= 0)
     @variable(m, αm[1:n_generators] >= 0)
 
-    @constraint(m, αm .== αm_det)
-    @constraint(m, αp .== αp_det)
+    #@constraint(m, αm .== αm_det)
+    #@constraint(m, αp .== αp_det)
+    @constraint(m, p .== p_det)
 
     ## General Constraints
     ##--------------------
@@ -73,7 +74,7 @@ function build_dccc_a_det(generators, buses, lines, farms, αm_det::Array{T, 1} 
     # @constraint(m, aprx23[g in 1:n_generators], ψp[g] <= αp[g] * generators[g].Pgmax + αp_min[g] * p[g] - αp_min[g] * generators[g].Pgmax)
     # @constraint(m, aprx24[g in 1:n_generators], ψp[g] <= αp[g] * generators[g].Pgmin + αp_max[g] * p[g] - αp_max[g] * generators[g].Pgmin)
 
-    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p[g] * (μms * αm_det[g] - μps * αp_det[g]) for g in 1:n_generators) == d_bil)
+    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p_det[g] * (μms * αm[g] - μps * αp[g]) for g in 1:n_generators) == d_bil)
 
     ## Balancing Cost
     ##---------------
