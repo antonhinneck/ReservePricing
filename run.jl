@@ -48,7 +48,7 @@ d = [b.Pd for b in buses]
 sum([b.Pd for b in buses])
 sum([g.Pgmax for g in generators])
 
-include("code_jl/linApprox.jl")
+#include("code_jl/linApprox.jl")
 
 include("code_jl//farms.jl")
 farms, n_farms, σ_vec, Σ, s_sq, Σ_rt, s = create_wind_farms(scaling_sigma = 1.0)
@@ -148,7 +148,7 @@ zm = diagm(zt)
 sum(zm * Σm)
 sum(zm) * sum(Σm)
 
-include("plotDists.jl")
+#include("plotDists.jl")
 
 d = [b.Pd for b in buses]
 
@@ -194,6 +194,8 @@ c_vec = [g.pi1  for g in generators]
 C_mat = diagm(0 => c_vec)
 C_rt = sqrt(C_mat)
 
+#include("Approx_planes.jl")
+
 function updateGen(min::Float64, max::Float64)
 
     @assert min >= 0 && min <= 1 && max <= 1 && max >= 0 "Values must be between 0 and 1."
@@ -208,12 +210,25 @@ function updateGen(min::Float64, max::Float64)
     return case_data, generators
 end
 
+μ = zeros(n_farms) .+ 0.1
+μs = sum(μ)
+𝛭 = sum(μ[f] for f in 1:n_farms)
+
+ζ1 = (sqrt(pi / 2))
+ζ2 = (2 * pi - 4) / (2 * pi)
+
+
+μm = μ .+ (σ_vec .* (1 / ζ1))
+μp = μ .- (σ_vec .* (1 / ζ1))
+μms = sum(μm)
+μps = sum(μp)
+
 ## Experiments
 ##############
 
 ## Linear Costs
 ###############
-
+updateGen(0.2, 0.5)
 # 0.1 0.39
 #
 # 105939 - 105157
@@ -226,42 +241,349 @@ end
 # 0.1 0.4
 #
 # 104611 - 104603
-include("code_jl/linApprox.jl")
+#include("code_jl/linApprox.jl")
 
-include("models/dccc_sym.jl")
-m_dccc = build_dccc_sym(generators, buses, lines, farms)
+include("models/dccc.jl")
+m_dccc = build_dccc(generators, buses, lines, farms)
 optimize!(m_dccc)
 termination_status(m_dccc)
 z1 = objective_value(m_dccc)
+value(m_dccc[:det_c])
+value(m_dccc[:d_lin])
+value(m_dccc[:d_con])
+value(m_dccc[:d_quad])
+value(m_dccc[:unc_c])
 
-include("models/dccc_sym_lin.jl")
-m_dccc = build_dccc_sym_lin(generators, buses, lines, farms)
-optimize!(m_dccc)
-termination_status(m_dccc)
-z2 = objective_value(m_dccc)
+include("models/dccc_apx.jl")
+mylim = 0.00001
+m_dccc_apx = build_dccc_apx(generators, buses, lines, farms, α_min = [mylim for i in 1:n_generators])
+optimize!(m_dccc_apx)
+objective_value(m_dccc_apx)
+sum(value.(m_dccc_apx[:p]))
+value.(m_dccc_apx[:α])
+sum(value.(m_dccc_apx[:α]))
+sum(value.(m_dccc_apx[:ψ]))
+value(m_dccc_apx[:det_c])
+value(m_dccc_apx[:d_lin])
+value(m_dccc_apx[:d_con])
+value(m_dccc_apx[:d_quad])
+value(m_dccc_apx[:unc_c])
+value(m_dccc_apx[:d_bil])
 
-results_approx = Vector{Float64}()
-my_aprxs = Vector{aprx}()
+include("models/dccc_det.jl")
+m_dccc_det = build_dccc_det(generators, buses, lines, farms, value.(m_dccc_apx[:α]), value.(m_dccc_apx[:p]))
+optimize!(m_dccc_det)
+objective_value(m_dccc_det)
+value(m_dccc_det[:d_lin])
+value(m_dccc_det[:d_con])
+value(m_dccc_det[:d_quad])
+value(m_dccc_det[:unc_c])
+value(m_dccc_det[:d_bil])
 
-for i in 1:16
+function adjust_limits_sw(alphas::Array{T, 1} where T <: Real; lim = Float64(0.0), dec = 6)
 
-    global my_aprxs = Vector{aprx}()
-    for j in 1:n_generators
-        push!(my_aprxs, aprx(approx(generators, j, segments_pu = i)...))
+    new_min = zeros(length(alphas))
+    new_max = zeros(length(alphas))
+
+    for (i, a) in enumerate(alphas)
+        new_min[i] = max(round(a - lim, digits = dec), 0.0)
+        new_max[i] = min(round(a + lim, digits = dec), 1.0)
     end
 
-    # To approximate the quadratic cost function, linear segments are used.
-    #     These are added as constraints. As these are greater than the function
+    return new_min, new_max
+end
 
-    include("models/dccc_sym_lin.jl")
-    m_dccc_lin = build_dccc_sym_lin(generators, buses, lines, farms)
-    optimize!(m_dccc_lin)
-    termination_status(m_dccc_lin)
-    push!(results_approx, objective_value(m_dccc_lin))
+function min_alg_sws(iters::Int64; lim_init = 0.00001, lim_const = 0.001, scheduler = 1.0, verbose = true)
+
+    progression_apx = Vector{Float64}()
+    progression_det = Vector{Float64}()
+    iteration = Vector{String}()
+
+    lims_min = nothing
+    lims_max = nothing
+
+    current_apx_model = nothing
+    ctr = 0
+
+    for i in 1:iters
+
+        if i == 1
+            m_dccc_apx_alg = build_dccc_apx(generators, buses, lines, farms, α_min = [lim_init for i in 1:n_generators])
+            optimize!(m_dccc_apx_alg)
+        else
+            m_dccc_apx_alg = build_dccc_apx(generators, buses, lines, farms, α_min = lims_min, α_max = lims_max, output_level = 0)
+            optimize!(m_dccc_apx_alg)
+        end
+
+        m_dccc_det_alg = build_dccc_det(generators, buses, lines, farms, value.(m_dccc_apx_alg[:α]), value.(m_dccc_apx_alg[:p]), output_level = 0)
+        optimize!(m_dccc_det_alg)
+
+        if verbose
+            println(string("ITR: ", i, " APX: ", objective_value(m_dccc_apx_alg), " DET: ", objective_value(m_dccc_det_alg)))
+        end
+
+        lims_min, lims_max = adjust_limits_sw(value.(m_dccc_apx_alg[:α]), lim = lim_const)
+
+        if i == 1
+            push!(progression_apx, objective_value(m_dccc_apx_alg))
+            push!(progression_det, objective_value(m_dccc_det_alg))
+            push!(iteration, string(1))
+            ctr += 1
+        else
+            if progression_det[ctr] > objective_value(m_dccc_det_alg) && termination_status(m_dccc_det_alg) == MOI.TerminationStatusCode(1) && objective_value(m_dccc_det_alg) != 0.0
+                push!(iteration, string(i))
+                push!(progression_apx, objective_value(m_dccc_apx_alg))
+                push!(progression_det, objective_value(m_dccc_det_alg))
+                current_apx_model = m_dccc_apx_alg
+                ctr += 1
+            end
+        end
+
+        #lim_const = lim_const * scheduler
+    end
+
+    return current_apx_model, [progression_apx, progression_det, iteration]
+end
+
+min_model, data = min_alg_sws(60, lim_init = 0.00, lim_const = 0.006)
+objective_value(min_model)
+
+m_dccc_det = build_dccc_det(generators, buses, lines, farms, value.(min_model[:α]), value.(min_model[:p]), output_level = 1)
+optimize!(m_dccc_det)
+objective_value(m_dccc_det)
+value(m_dccc_det[:det_c])
+value(m_dccc_det[:d_lin])
+value(m_dccc_det[:d_con])
+value(m_dccc_det[:d_quad])
+value(m_dccc_det[:unc_c])
+value(m_dccc_det[:d_bil])
+
+using PyPlot
+
+fig = figure(figsize=(8, 2.2))
+rc("font", family = "serif", style = "italic", size = 14)
+rc("text", usetex = true)
+rc("lines", linewidth = 1)
+
+ax = fig.add_axes([0.09,0.2,0.905,0.78])
+grid(linewidth = 0.2, linestyle = (0, (10, 10)), color = "lightgray")
+ax.tick_params(direction = "in", top = true, right = true, width = 1.4)
+
+#ax.set_yscale("log")
+#ax.set_axisbelow(true)
+xlabel("Iteration")
+ylabel("\$z\$")
+ylim(bottom = 98260, top = 98550)
+#ylabel("\$\\chi^{+}_{u}\$")
+
+plot(data[3], data[1], color = "lightgreen", lw = 1.2, ls = "dotted", marker = "D", ms = 4.0, mfc = "white", label = "\$z^{APX}\$")
+plot(data[3], data[2], color = "lightseagreen", lw = 1.2, ls = "dotted", marker = "D", ms = 4.0, mfc = "white", label = "\$z^{DET}\$")
+
+legend(loc = "upper right", fancybox = false, edgecolor = "black", framealpha = 0.9)
+savefig(string("plots_final//algorithm.pdf"), format = :pdf)
+#sm = sqrt(ζ2) * s
+
+include("models/dccc_a_apx.jl")
+m_dccc_a_apx = build_dccc_a_apx(generators, buses, lines, farms, αm_min = ones(n_generators) * 0.005, αp_min = ones(n_generators) * 0.005)
+optimize!(m_dccc_a_apx)
+termination_status(m_dccc_a_apx)
+z4 = objective_value(m_dccc_a_apx)
+value(m_dccc_a_apx[:det_c])
+value(m_dccc_a_apx[:d_lin])
+value(m_dccc_a_apx[:d_con])
+value(m_dccc_a_apx[:d_quad])
+value(m_dccc_a_apx[:unc_c])
+value(m_dccc_a_apx[:d_bil])
+value.(m_dccc_a_apx[:αm])
+value.(m_dccc_a_apx[:αp])
+
+include("models/dccc_a_det.jl")
+m_dccc_a_det = build_dccc_a_det(generators, buses, lines, farms, value.(m_dccc_a_apx[:αm]), value.(m_dccc_a_apx[:αp]), value.(m_dccc_a_apx[:p]))
+optimize!(m_dccc_a_det)
+termination_status(m_dccc_a_det)
+z4 = objective_value(m_dccc_a_det)
+value(m_dccc_a_det[:det_c])
+value(m_dccc_a_det[:d_lin])
+value(m_dccc_a_det[:d_con])
+value(m_dccc_a_det[:d_quad])
+value(m_dccc_a_det[:unc_c])
+value(m_dccc_a_det[:d_bil])
+
+value.(m_dccc_det[:α])
+value.(m_dccc_a_det[:αp])
+
+function sw2n2n(alpha)
+
+    # g x f
+    new_alpha = ones(n_generators, n_farms)
+    for i in 1:n_farms
+        new_alpha[:, i] = [alpha[i] for i in 1:n_generators]
+    end
+    return new_alpha
 
 end
 
-include("plot_approx.jl")
+α_min_init = sw2n2n(value.(m_dccc_a_det[:αp])) .- 0.0002 #ones((n_generators, n_farms)) * 0.000001
+α_max_init = ones((n_generators, n_farms)) * 1.0
+include("models/dccc_n2n_apx.jl")
+m_dccc_n2n_apx = build_dccc_n2n_apx(generators, buses, lines, farms, α_min_init, α_max_init)
+optimize!(m_dccc_n2n_apx)
+termination_status(m_dccc_n2n_apx)
+z4 = objective_value(m_dccc_n2n_apx)
+value(m_dccc_n2n_apx[:det_c])
+value(m_dccc_n2n_apx[:d_lin])
+value(m_dccc_n2n_apx[:d_con])
+value(m_dccc_n2n_apx[:d_quad])
+value(m_dccc_n2n_apx[:unc_c])
+value(m_dccc_n2n_apx[:u_bil])
+value.(m_dccc_n2n_apx[:p_uncert])
+
+α_det = value.(m_dccc_n2n_apx[:α])
+
+include("models/dccc_n2n_det.jl")
+m_dccc_n2n_det = build_dccc_n2n_det(generators, buses, lines, farms, α_det)
+optimize!(m_dccc_n2n_det )
+termination_status(m_dccc_n2n_det)
+z4 = objective_value(m_dccc_n2n_det)
+value(m_dccc_n2n_det[:det_c])
+value(m_dccc_n2n_det[:d_lin])
+value(m_dccc_n2n_det[:d_con])
+value(m_dccc_n2n_det[:d_quad])
+value(m_dccc_n2n_det[:unc_c])
+value(m_dccc_n2n_det[:u_bil])
+
+function adjust_limits_a(alphas::Array{T, 2} where T <: Real; lim = Float64(0.0), dec = 6)
+
+    new_min = deepcopy(alphas)
+    new_max = deepcopy(alphas)
+
+    new_min -= ones(size(alphas)) * lim
+    new_max += ones(size(alphas)) * lim
+
+    return new_min, new_max
+end
+
+function min_alg_a(iters::Int64, α_initm, α_initp; lim_init = 0.01, lim_const = 0.01, scheduler = 1.0, verbose = true)
+
+    progression_apx = Vector{Float64}()
+    progression_det = Vector{Float64}()
+    iteration = Vector{String}()
+
+    # if α_initm == nothing
+    #     α_initm = zeros(n_generators, n_farms)
+    #     α_initp = zeros(n_generators, n_farms)
+    # end
+
+
+    lims_min_m = nothing
+    lims_max_m = nothing
+
+    lims_min_p = nothing
+    lims_max_p = nothing
+
+    current_apx_model = nothing
+    ctr = 0
+
+    for i in 1:iters
+
+        if i == 1
+            #m_dccc_n2n_a_apx_alg = build_dccc_n2n_a_apx(generators, buses, lines, farms, ones(n_generators, n_farms) * lim_init, ones(n_generators, n_farms) * 1.0, ones(n_generators, n_farms) * lim_init, ones(n_generators, n_farms) * 1.0
+            m_dccc_n2n_a_apx_alg = build_dccc_n2n_a_apx(generators, buses, lines, farms, α_initm .- lim_init, ones(n_generators, n_farms), α_initp .- lim_init, ones(n_generators, n_farms))
+            optimize!(m_dccc_n2n_a_apx_alg)
+            println(objective_value(m_dccc_n2n_a_apx_alg))
+        else
+            m_dccc_n2n_a_apx_alg = build_dccc_n2n_a_apx(generators, buses, lines, farms, lims_min_m, lims_max_m, lims_min_p, lims_max_p)
+            optimize!(m_dccc_n2n_a_apx_alg)
+        end
+
+        m_dccc_n2n_a_det_alg = build_dccc_n2n_a_det(generators, buses, lines, farms, value.(m_dccc_n2n_a_apx_alg[:αm]), value.(m_dccc_n2n_a_apx_alg[:αp]), output_level = 0)
+        optimize!(m_dccc_n2n_a_det_alg)
+
+        if verbose
+            println(string("ITR: ", i, " APX: ", objective_value(m_dccc_n2n_a_apx_alg), " DET: ", objective_value(m_dccc_n2n_a_det_alg)))
+        end
+
+        lims_min_m, lims_max_m = adjust_limits_a(value.(m_dccc_n2n_a_apx_alg[:αm]), lim = lim_const)
+        lims_min_p, lims_max_p = adjust_limits_a(value.(m_dccc_n2n_a_apx_alg[:αp]), lim = lim_const)
+
+        if i == 1
+            push!(progression_apx, objective_value(m_dccc_n2n_a_apx_alg))
+            push!(progression_det, objective_value(m_dccc_n2n_a_apx_alg))
+            push!(iteration, string(1))
+            ctr += 1
+        else
+            if progression_det[ctr] > objective_value(m_dccc_n2n_a_det_alg) && termination_status(m_dccc_n2n_a_det_alg) == MOI.TerminationStatusCode(1) && objective_value(m_dccc_n2n_a_det_alg) != 0.0
+                push!(iteration, string(i))
+                push!(progression_apx, objective_value(m_dccc_n2n_a_apx_alg))
+                push!(progression_det, objective_value(m_dccc_n2n_a_apx_alg))
+                current_apx_model = m_dccc_n2n_a_apx_alg
+                ctr += 1
+            end
+        end
+
+        #lim_const = lim_const * scheduler
+    end
+
+    return current_apx_model, [progression_apx, progression_det, iteration]
+end
+
+# α_min_initm = ones((n_generators, n_farms)) * 0.0001
+α_min_initm = sw2n2n(value.(m_dccc_a_det[:αm])) .- 0.001 # value.(m_dccc_n2n_det[:α]) # ones((n_generators, n_farms)) * 0.01
+α_max_initm = ones((n_generators, n_farms)) * 1.0
+# α_min_initp = ones((n_generators, n_farms)) * 0.0001
+α_min_initp = sw2n2n(value.(m_dccc_a_det[:αp])) .- 0.001 # value.(m_dccc_n2n_det[:α]) # ones((n_generators, n_farms)) * 0.01
+α_max_initp = ones((n_generators, n_farms)) * 1.0
+include("models/dccc_n2n_a_apx.jl")
+m_dccc_n2n_a_apx = build_dccc_n2n_a_apx(generators, buses, lines, farms, α_min_initm, α_max_initm, α_min_initp, α_max_initp)
+optimize!(m_dccc_n2n_a_apx)
+value(m_dccc_n2n_a_apx[:det_c])
+value(m_dccc_n2n_a_apx[:d_lin])
+value(m_dccc_n2n_a_apx[:d_con])
+value(m_dccc_n2n_a_apx[:d_quad])
+value(m_dccc_n2n_a_apx[:unc_c])
+value(m_dccc_n2n_a_apx[:u_bil])
+
+α_detm = value.(m_dccc_n2n_a_apx[:αm])
+α_detp = value.(m_dccc_n2n_a_apx[:αp])
+
+include("models/dccc_n2n_a_det.jl")
+m_dccc_n2n_a_det = build_dccc_n2n_a_det(generators, buses, lines, farms, α_detm, α_detp)
+optimize!(m_dccc_n2n_a_det)
+termination_status(m_dccc_n2n_a_det)
+objective_value(m_dccc_n2n_a_det)
+value(m_dccc_n2n_a_det[:det_c])
+value(m_dccc_n2n_a_det[:d_lin])
+value(m_dccc_n2n_a_det[:d_con])
+value(m_dccc_n2n_a_det[:d_quad])
+value(m_dccc_n2n_a_det[:unc_c])
+value(m_dccc_n2n_a_det[:u_quad])
+value(m_dccc_n2n_a_det[:u_bil])
+
+min_alg_a(10, α_min_initm, α_min_initp, lim_init = 0.00001, lim_const = 0.00000002)
+
+
+# results_approx = Vector{Float64}()
+# my_aprxs = Vector{aprx}()
+
+# for i in 1:16
+#
+#     global my_aprxs = Vector{aprx}()
+#     for j in 1:n_generators
+#         push!(my_aprxs, aprx(approx(generators, j, segments_pu = i)...))
+#     end
+#
+#     # To approximate the quadratic cost function, linear segments are used.
+#     #     These are added as constraints. As these are greater than the function
+#
+#     include("models/dccc_sym_lin.jl")
+#     m_dccc_lin = build_dccc_sym_lin(generators, buses, lines, farms)
+#     optimize!(m_dccc_lin)
+#     termination_status(m_dccc_lin)
+#     push!(results_approx, objective_value(m_dccc_lin))
+#
+# end
+
+#include("plot_approx.jl")
 
 #-----------------------------------------------------
 #-----------------------------------------------------
