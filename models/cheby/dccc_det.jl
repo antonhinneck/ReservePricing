@@ -1,16 +1,9 @@
-function build_dccc_apx(generators, buses, lines, farms; α_min = nothing, α_max = nothing, set_sol = false, output_level = 0)
+function build_dccc_det(generators, buses, lines, farms, p_det::Array{T, 1} where T <: Real; output_level = 0)
+
 
         ## Model
         ##------
         m = Model(with_optimizer(Mosek.Optimizer,  MSK_IPAR_LOG = output_level, MSK_IPAR_INTPNT_MAX_ITERATIONS = 1000))
-
-        if α_min == nothing
-            α_min = zeros(n_generators)
-        end
-
-        if !set_sol && α_max == nothing
-            α_max = ones(n_generators)
-        end
 
 
         #println(string("min: ",α_min," max: ",α_max))
@@ -19,14 +12,7 @@ function build_dccc_apx(generators, buses, lines, farms; α_min = nothing, α_ma
         @variable(m, p[1:n_generators] >= 0)
         @variable(m, f[1:n_lines])
         @variable(m, θ[1:n_buses])
-        @variable(m, α_min[g] <= α[g = 1:n_generators] <= α_max[g])
-
-        if set_sol
-            @assert α_min != nothing
-            for g in 1:n_generators
-                JuMP.fix(α[g], α_min[g]; force = true)
-            end
-        end
+        @variable(m, α[g = 1:n_generators] >= 0)
 
         ## General Constraints
         ##--------------------
@@ -42,7 +28,7 @@ function build_dccc_apx(generators, buses, lines, farms; α_min = nothing, α_ma
         @constraint(m, γ, sum(α[i] for i in 1:n_generators) == 1)
 
         @constraint(m, cc1[i in 1:n_generators], p[i] + α[i] * 𝛭 + z * α[i] * s <= generators[i].Pgmax)
-        @constraint(m, cc2[i in 1:n_generators], -p[i] + α[i] * 𝛭 + z * α[i] * s <= -generators[i].Pgmin)
+        @constraint(m, cc2[i in 1:n_generators], -p[i] - α[i] * 𝛭 - z * α[i] * s <= -generators[i].Pgmin)
 
         ## Generation Cost
         ##----------------
@@ -50,7 +36,7 @@ function build_dccc_apx(generators, buses, lines, farms; α_min = nothing, α_ma
         @variable(m, d_lin >= 0)
         @variable(m, d_quad >= 0)
         @variable(m, d_bil >= 0)
-        @variable(m, ψ[1:n_generators] >= 0)
+        # @variable(m, ψ[1:n_generators] >= 0)
 
         @constraint(m, d_con == sum(generators[i].pi3 for i in 1:n_generators))
         @constraint(m, d_lin == sum(p[i] * generators[i].pi2 for i in 1:n_generators))
@@ -59,20 +45,13 @@ function build_dccc_apx(generators, buses, lines, farms; α_min = nothing, α_ma
 
         ## McCormick Envelope
         ##-------------------
-        @constraint(m, bilinear_costs, sum( 2 * 𝛭 * ψ[g] * generators[g].pi1 for g in 1:n_generators) == d_bil )
-        @constraint(m, aprx1[g in 1:n_generators], ψ[g] >= α[g] * generators[g].Pgmin + α_min[g] * p[g] - α_min[g] * generators[g].Pgmin)
-        @constraint(m, aprx2[g in 1:n_generators], ψ[g] >= α[g] * generators[g].Pgmax + α_max[g] * p[g] - α_max[g] * generators[g].Pgmax)
-        @constraint(m, aprx3[g in 1:n_generators], ψ[g] <= α[g] * generators[g].Pgmax + α_min[g] * p[g] - α_min[g] * generators[g].Pgmax)
-        @constraint(m, aprx4[g in 1:n_generators], ψ[g] <= α[g] * generators[g].Pgmin + α_max[g] * p[g] - α_max[g] * generators[g].Pgmin)
+        @constraint(m, bilinear_costs, sum( 2 * 𝛭 * α[g] * p_det[g] * generators[g].pi1 for g in 1:n_generators) == d_bil)
 
         ## Balancing Cost
         ##---------------
-        @variable(m, u_quads >= 0)
-        @constraint(m, vec(vcat(0.5, u_quads, C_rt * α .* s)) in RotatedSecondOrderCone())
-
-        @variable(m, u_quadm >= 0)
-        @constraint(m, vec(vcat(0.5, u_quadm, C_rt * α .* 𝛭)) in RotatedSecondOrderCone())
-        @expression(m, unc_c, u_quads + u_quadm)
+        @variable(m, u_quad >= 0)
+        @constraint(m, vec(vcat(0.5, u_quad, C_rt * α .* s)) in RotatedSecondOrderCone())
+        @expression(m, unc_c, u_quad)
 
         ## Objective
         ##----------

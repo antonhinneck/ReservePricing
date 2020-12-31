@@ -37,8 +37,6 @@ function build_dccc(generators, buses, lines, farms)
     @variable(m, d_lin >= 0)
     @variable(m, d_quad >= 0)
 
-
-
     @constraint(m, d_con == sum(generators[i].pi3 for i in 1:n_generators))
     @constraint(m, d_lin == sum(p[i] * generators[i].pi2 for i in 1:n_generators))
     @constraint(m, vec(vcat(0.5, d_quad, C_rt * p)) in RotatedSecondOrderCone())

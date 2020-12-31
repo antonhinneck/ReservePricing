@@ -42,8 +42,8 @@ function build_dccc_a_apx(generators, buses, lines, farms; αm_min = nothing, α
     @constraint(m, γp, sum(αp[i] for i in 1:n_generators) == 1)
     @constraint(m, γm, sum(αm[i] for i in 1:n_generators) == 1)
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + μms * (αm[i]) + za * sm * αm[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μps * (αp[i]) + za * sp * αp[i] <= -generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + μms * (αm[i] - αp[i]) + za * sm * αm[i] <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + μps * (αp[i] - αm[i]) + za * sp * αp[i] <= -generators[i].Pgmin)
 
     @variable(m, d_con >= 0)
     @variable(m, d_lin >= 0)
@@ -70,25 +70,20 @@ function build_dccc_a_apx(generators, buses, lines, farms; αm_min = nothing, α
     @constraint(m, aprx23[g in 1:n_generators], ψp[g] <= αp[g] * generators[g].Pgmax + αp_min[g] * p[g] - αp_min[g] * generators[g].Pgmax)
     @constraint(m, aprx24[g in 1:n_generators], ψp[g] <= αp[g] * generators[g].Pgmin + αp_max[g] * p[g] - αp_max[g] * generators[g].Pgmin)
 
-    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * (μms * ψm[g] + μps * ψp[g]) for g in 1:n_generators) == d_bil)
+    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * (μms * ψm[g] - μps * ψp[g]) for g in 1:n_generators) == d_bil)
 
     ## Balancing Cost
     ##---------------
-    @variable(m, u_quads_m >= 0)
-    @variable(m, u_quads_p >= 0)
-    @constraint(m, vec(vcat(0.5, u_quads_m, C_rt * αm .* sm)) in RotatedSecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quads_p, C_rt * αp .* sp)) in RotatedSecondOrderCone())
-
-    @variable(m, u_quadm_m >= 0)
-    @variable(m, u_quadm_p >= 0)
-    @constraint(m, vec(vcat(0.5, u_quadm_m, C_rt * αm .* μms)) in RotatedSecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quadm_p, C_rt * αp .* μps)) in RotatedSecondOrderCone())
-    @expression(m, unc_c, u_quadm_m + u_quadm_p + u_quads_m + u_quads_p)
+    @variable(m, u_quad_m >= 0)
+    @variable(m, u_quad_p >= 0)
+    @constraint(m, vec(vcat(0.5, u_quad_m, C_rt * αm .* sm)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, u_quad_p, C_rt * αp .* sp)) in RotatedSecondOrderCone())
+    @expression(m, unc_c, u_quad_m + u_quad_p)
 
 
     ## Objective
     ##----------
-    @objective(m, Min, det_c + unc_c - d_bil)
+    @objective(m, Min, det_c + unc_c + d_bil)
 
     return m
 

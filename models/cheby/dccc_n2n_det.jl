@@ -1,4 +1,4 @@
-function build_dccc_n2n_apx(generators, buses, lines, farms, α_min, α_max; output_level = 0)
+function build_dccc_n2n_det(generators, buses, lines, farms, α_det; p_det = nothing, output_level = 0)
 
     ## Model
     ##------
@@ -10,10 +10,12 @@ function build_dccc_n2n_apx(generators, buses, lines, farms, α_min, α_max; out
     @variable(m, f[1:n_lines])
     @variable(m, θ[1:n_buses])
     @variable(m, α[1:n_generators, 1:n_farms] >= 0)
-    @variable(m, p_uncert[1:n_generators] >= 0)
 
-    @constraint(m, lim1, α .>= α_min)
-    @constraint(m, lim2, α .<= α_max)
+    if p_det == nothing
+        @constraint(m, fix, α_det .== α)
+    else
+        @constraint(m, fix, p_det .== p)
+    end
 
     ## General Constraints
     ##--------------------
@@ -30,6 +32,7 @@ function build_dccc_n2n_apx(generators, buses, lines, farms, α_min, α_max; out
     @constraint(m, χ[u in 1:n_farms], sum(α[i, u] for i in 1:n_generators) == 1)
     @expression(m, μα, α * μ)
 
+    @variable(m, p_uncert[1:n_generators] >= 0)
     @constraint(m, cc1[i in 1:n_generators], p[i] + μα[i] + z * p_uncert[i] <= generators[i].Pgmax)
     @constraint(m, cc2[i in 1:n_generators], -p[i] + μα[i] + z * p_uncert[i] <= -generators[i].Pgmin)
 
@@ -46,32 +49,26 @@ function build_dccc_n2n_apx(generators, buses, lines, farms, α_min, α_max; out
 
     ## Uncertain Costs
     ##----------------
-    @variable(m, u_quads >= 0)
+    @variable(m, u_quad >= 0)
     @expression(m, norm, α * Σ_rt)
-    @constraint(m, uncert_gen1[i in 1:n_generators], vcat(p_uncert[i], norm[i, :]) in SecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quads, C_rt * p_uncert)) in RotatedSecondOrderCone())
-
-    @variable(m, u_quadm >= 0)
-    @constraint(m, vec(vcat(0.5, u_quadm, C_rt * μα)) in RotatedSecondOrderCone())
+    @constraint(m, uncert_gen[i in 1:n_generators], vcat(p_uncert[i], norm[i, :]) in SecondOrderCone())
+    @constraint(m, vec(vcat(0.5, u_quad, C_rt * p_uncert)) in RotatedSecondOrderCone())
 
     ## McCormick Envelope
     ##-------------------
     @variable(m, u_bil >= 0)
-    @variable(m, Ψ[1:n_generators, 1:n_farms] >= 0)
+    #@variable(m, Ψ[1:n_generators, 1:n_farms] >= 0)
 
-    @constraint(m, aprx1[g in 1:n_generators, f in 1:n_farms], Ψ[g, f] >= α[g, f] * generators[g].Pgmin + α_min[g, f] * p[g] - α_min[g, f] * generators[g].Pgmin)
-    @constraint(m, aprx2[g in 1:n_generators, f in 1:n_farms], Ψ[g, f] >= α[g, f] * generators[g].Pgmax + α_max[g, f] * p[g] - α_max[g, f] * generators[g].Pgmax)
-    @constraint(m, aprx3[g in 1:n_generators, f in 1:n_farms], Ψ[g, f] <= α[g, f] * generators[g].Pgmax + α_min[g, f] * p[g] - α_min[g, f] * generators[g].Pgmax)
-    @constraint(m, aprx4[g in 1:n_generators, f in 1:n_farms], Ψ[g, f] <= α[g, f] * generators[g].Pgmin + α_max[g, f] * p[g] - α_max[g, f] * generators[g].Pgmin)
-
-    @expression(m, μΨ, Ψ * μ)
-    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * μΨ[g] for g in 1:n_generators) == u_bil)
-
+    if p_det == nothing
+        @expression(m, μA, α_det * μ)
+        @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * μA[g] * p[g] for g in 1:n_generators) == u_bil)
+    else
+        @expression(m, μA, α * μ)
+        @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * μA[g] * p_det[g] for g in 1:n_generators) == u_bil)
+    end
     ## Quadratic
     ##----------
-    # @variable(m, u_quad >= 0)
-    # @constraint(m, vec(vcat(0.5, u_quad, C_rt * p_uncert)) in RotatedSecondOrderCone())
-    @expression(m, unc_c, u_quads + u_quadm - u_bil)
+    @expression(m, unc_c, u_quad - u_bil)
 
     ## Objective
     ##----------

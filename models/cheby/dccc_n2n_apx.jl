@@ -46,13 +46,11 @@ function build_dccc_n2n_apx(generators, buses, lines, farms, α_min, α_max; out
 
     ## Uncertain Costs
     ##----------------
-    @variable(m, u_quads >= 0)
+    @variable(m, u_quad >= 0)
     @expression(m, norm, α * Σ_rt)
-    @constraint(m, uncert_gen1[i in 1:n_generators], vcat(p_uncert[i], norm[i, :]) in SecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quads, C_rt * p_uncert)) in RotatedSecondOrderCone())
+    @constraint(m, uncert_gen[i in 1:n_generators], vcat(p_uncert[i], norm[i, :]) in SecondOrderCone())
 
-    @variable(m, u_quadm >= 0)
-    @constraint(m, vec(vcat(0.5, u_quadm, C_rt * μα)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, u_quad, C_rt * p_uncert)) in RotatedSecondOrderCone())
 
     ## McCormick Envelope
     ##-------------------
@@ -71,7 +69,7 @@ function build_dccc_n2n_apx(generators, buses, lines, farms, α_min, α_max; out
     ##----------
     # @variable(m, u_quad >= 0)
     # @constraint(m, vec(vcat(0.5, u_quad, C_rt * p_uncert)) in RotatedSecondOrderCone())
-    @expression(m, unc_c, u_quads + u_quadm - u_bil)
+    @expression(m, unc_c, u_quad + u_bil)
 
     ## Objective
     ##----------

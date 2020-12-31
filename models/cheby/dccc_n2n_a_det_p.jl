@@ -1,4 +1,4 @@
-function build_dccc_n2n_a_det_alpha(generators, buses, lines, farms, α_detm, α_detp; output_level = 0)
+function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_level = 0)
 
     ## Model
     ##------
@@ -13,10 +13,7 @@ function build_dccc_n2n_a_det_alpha(generators, buses, lines, farms, α_detm, α
     @variable(m, αp[1:n_generators, 1:n_farms] >= 0)
     @variable(m, αm[1:n_generators, 1:n_farms] >= 0)
 
-
-    @constraint(m, fixαm, αm .== α_detm)
-    @constraint(m, fixαp, αp .== α_detp)
-
+    @constraint(m, fixp, p .== p_det)
 
     ## General Constraints
     ##--------------------
@@ -40,8 +37,8 @@ function build_dccc_n2n_a_det_alpha(generators, buses, lines, farms, α_detm, α
     @constraint(m, uncert_gen1[i in 1:n_generators], vec(vcat(pp_uncert[i], norm_up[i,:]...)) in SecondOrderCone())
     @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i,:]...)) in SecondOrderCone())
 
-    @expression(m, μαm, α_detm * μm)
-    @expression(m, μαp, α_detp * μp)
+    @expression(m, μαm, αm * μm)
+    @expression(m, μαp, αp * μp)
     #@expression(m, δ, (2.0 * αm - 2.0 * αp) * μm'')
 
     @constraint(m, cc1[i in 1:n_generators], p[i] + (μαm[i] - μαp[i]) + za * pm_uncert[i] <= generators[i].Pgmax)
@@ -63,31 +60,24 @@ function build_dccc_n2n_a_det_alpha(generators, buses, lines, farms, α_detm, α
 
     # Quadratic
     #----------
-    @variable(m, u_quads_p >= 0)
-    @variable(m, u_quads_m >= 0)
-    @expression(m, norm_m, αm * Σ_rt)
-    @expression(m, norm_p, αp * Σ_rt)
+    @variable(m, u_quadm >= 0)
+    @variable(m, u_quadp >= 0)
+    @expression(m, u_quad, u_quadm + u_quadp)
+    @expression(m, norm_m, αm * Σm_rt)
+    @expression(m, norm_p, αp * Σp_rt)
     @constraint(m, uncert_gen_m[i in 1:n_generators], vcat(pm_uncert[i], norm_m[i, :]) in SecondOrderCone())
     @constraint(m, uncert_gen_p[i in 1:n_generators], vcat(pp_uncert[i], norm_p[i, :]) in SecondOrderCone())
-
-    @constraint(m, vec(vcat(0.5, u_quads_p, C_rt * pp_uncert)) in RotatedSecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quads_m, C_rt * pm_uncert)) in RotatedSecondOrderCone())
-
-    @variable(m, u_quadm_p >= 0)
-    @variable(m, u_quadm_m >= 0)
-    @constraint(m, vec(vcat(0.5, u_quadm_p, C_rt * μαp)) in RotatedSecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quadm_m, C_rt * μαm)) in RotatedSecondOrderCone())
-
-    @expression(m, u_quad, u_quads_p + u_quads_m + u_quadm_p + u_quadm_m)
+    @constraint(m, vec(vcat(0.5, u_quad, C_rt * pm_uncert)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, u_quad, C_rt * pp_uncert)) in RotatedSecondOrderCone())
 
     ## McCormick Envelope
     ##-------------------
     @variable(m, u_bil >= 0)
-    # @expression(m, μAm, α_detm * μm)
-    # @expression(m, μAp, α_detp * μp)
-    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p[g] * (μαm[g] - μαp[g]) for g in 1:n_generators) == u_bil)
+    @expression(m, μAm, αm * μm)
+    @expression(m, μAp, αp * μp)
+    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p_det[g] * (μAm[g] - μAp[g]) for g in 1:n_generators) == u_bil)
 
-    @expression(m, unc_c, u_quad - u_bil)
+    @expression(m, unc_c, u_quad + u_bil)
 
     ## Objective
     ##----------
