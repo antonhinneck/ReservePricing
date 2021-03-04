@@ -1,4 +1,4 @@
-function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_level = 0)
+function build_dccc_n2n_a_det_p_fa(generators, buses, lines, farms, amdet, apdet; output_level = 0, cheb = false)
 
     ## Model
     ##------
@@ -13,8 +13,10 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     @variable(m, αp[1:n_generators, 1:n_farms] >= 0)
     @variable(m, αm[1:n_generators, 1:n_farms] >= 0)
 
-    @constraint(m, fixp, p .== p_det)
+    #@constraint(m, fixp, p .== p_det)
     #@constraint(m, eq, αp .== αm)
+    @constraint(m, fixa1, αm .== amdet)
+    @constraint(m, fixa2, αp .== apdet)
 
     ## General Constraints
     ##--------------------
@@ -28,20 +30,24 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     @constraint(m, flowlim2[i in 1:n_lines], -f[i] >= -lines[i].u)
     #@constraint(m, a[u in 1:n_farms, i in 1:n_generators], αm[i, u] == αp[i, u])
 
-    @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
-    @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
+    # @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
+    # @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
 
     @variable(m, p_uncert[1:n_generators] >= 0)
     @expression(m, norm_m, αm * Σm_rt)
     @expression(m, norm_p, αp * Σp_rt)
     @constraint(m, uncert_gen_m[i in 1:n_generators], vcat(p_uncert[i], norm_m[i, :], norm_p[i, :]) in SecondOrderCone())
 
-    @expression(m, μαm, αm * μm)
-    @expression(m, μαp, αp * μp)
+    @expression(m, μαm, amdet * μm)
+    @expression(m, μαp, apdet * μp)
 
-    #if
-    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] - μαp[i] + za * p_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] - μαm[i] + za * p_uncert[i] <= -generators[i].Pgmin)
+    if cheb
+        @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] - μαp[i] + z_cheb * p_uncert[i] <= generators[i].Pgmax)
+        @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] - μαm[i] + z_cheb * p_uncert[i] <= -generators[i].Pgmin)
+    else
+        @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] - μαp[i] + za * p_uncert[i] <= generators[i].Pgmax)
+        @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] - μαm[i] + za * p_uncert[i] <= -generators[i].Pgmin)
+    end
 
     ## Deterministic Costs
     ##--------------------
@@ -74,7 +80,7 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     ## McCormick Envelope
     ##-------------------
     @variable(m, u_bil >= 0)
-    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p_det[g] * (μαm[g] - μαp[g]) for g in 1:n_generators) == u_bil)
+    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p[g] * (μαm[g] - μαp[g]) for g in 1:n_generators) == u_bil)
 
     @expression(m, unc_c, u_quad - u_bil)
 

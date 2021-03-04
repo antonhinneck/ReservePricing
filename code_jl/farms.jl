@@ -12,7 +12,7 @@ end
 
 function create_wind_farms(; scaling_sigma = 1.0, scaling_cap = 1.0, fc = 1)
 
-    capacity = 2 .* [70.0, 147.0, 102.0, 105.0, 113.0, 84.0, 59.0, 250.0, 118.0, 76.0, 72.0] ./ 100
+    capacity = scaling_sigma  * 1.0 .* [70.0, 147.0, 102.0, 105.0, 113.0, 84.0, 59.0, 250.0, 118.0, 76.0, 72.0] ./ 100
     bus_ids = [3, 8, 11, 20, 24, 26, 31, 38, 43, 49, 53]
 
     @assert length(bus_ids) == length(capacity)

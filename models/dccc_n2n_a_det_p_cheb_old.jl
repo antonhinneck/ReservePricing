@@ -1,9 +1,9 @@
-function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_level = 0)
+function build_dccc_n2n_a_det_p_cheb(generators, buses, lines, farms; output_level = 0)
 
     ## Model
     ##------
     output_level = output_level
-    m = Model(with_optimizer(Mosek.Optimizer,  MSK_IPAR_LOG = output_level))
+    m = Model(with_optimizer(Mosek.Optimizer,  MSK_IPAR_LOG=output_level))
 
     ## Variables
     ##----------
@@ -13,8 +13,7 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     @variable(m, αp[1:n_generators, 1:n_farms] >= 0)
     @variable(m, αm[1:n_generators, 1:n_farms] >= 0)
 
-    @constraint(m, fixp, p .== p_det)
-    #@constraint(m, eq, αp .== αm)
+    #@constraint(m, fixp, p .== p_det)
 
     ## General Constraints
     ##--------------------
@@ -31,17 +30,19 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
     @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
 
-    @variable(m, p_uncert[1:n_generators] >= 0)
-    @expression(m, norm_m, αm * Σm_rt)
-    @expression(m, norm_p, αp * Σp_rt)
-    @constraint(m, uncert_gen_m[i in 1:n_generators], vcat(p_uncert[i], norm_m[i, :], norm_p[i, :]) in SecondOrderCone())
+    @variable(m, pp_uncert[1:n_generators] >= 0)
+    @variable(m, pm_uncert[1:n_generators] >= 0)
+    @expression(m, norm_up, αp * diagm(σ_cheb_p))
+    @expression(m, norm_dwn, αm * diagm(σ_cheb_m))
+    @constraint(m, uncert_gen1[i in 1:n_generators], vcat(pp_uncert[i], norm_up[i,:]...) in SecondOrderCone())
+    @constraint(m, uncert_gen2[i in 1:n_generators], vcat(pm_uncert[i], norm_dwn[i,:]...) in SecondOrderCone())
 
-    @expression(m, μαm, αm * μm)
-    @expression(m, μαp, αp * μp)
+    # @expression(m, μαm, αm * μm)
+    # @expression(m, μαp, αp * μp)
+    #@expression(m, δ, (2.0 * αm - 2.0 * αp) * μm'')
 
-    #if
-    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] - μαp[i] + za * p_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] - μαm[i] + za * p_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + pm_uncert[i] <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + pp_uncert[i] <= -generators[i].Pgmin)
 
     ## Deterministic Costs
     ##--------------------
@@ -61,22 +62,29 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     #----------
     @variable(m, u_quads_p >= 0)
     @variable(m, u_quads_m >= 0)
+    # @expression(m, norm_m, αm * Σm)
+    # @expression(m, norm_p, αp * Σp)
+    # @constraint(m, uncert_gen_m[i in 1:n_generators], vcat(pm_uncert[i], norm_m[i, :]) in SecondOrderCone())
+    # @constraint(m, uncert_gen_p[i in 1:n_generators], vcat(pp_uncert[i], norm_p[i, :]) in SecondOrderCone())
 
-    @constraint(m, vec(vcat(0.5, u_quads_m, C_rt * p_uncert)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, u_quads_p, C_rt * pp_uncert)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, u_quads_m, C_rt * pm_uncert)) in RotatedSecondOrderCone())
 
-    @variable(m, u_quadm_p >= 0)
-    @variable(m, u_quadm_m >= 0)
-    @constraint(m, vec(vcat(0.5, u_quadm_p, C_rt * μαp)) in RotatedSecondOrderCone())
-    @constraint(m, vec(vcat(0.5, u_quadm_m, C_rt * μαm)) in RotatedSecondOrderCone())
+    # @variable(m, u_quadm_p >= 0)
+    # @variable(m, u_quadm_m >= 0)
+    # @constraint(m, vec(vcat(0.5, u_quadm_p, C_rt * μαp)) in RotatedSecondOrderCone())
+    # @constraint(m, vec(vcat(0.5, u_quadm_m, C_rt * μαm)) in RotatedSecondOrderCone())
 
-    @expression(m, u_quad, u_quads_p + u_quads_m + u_quadm_p + u_quadm_m)
+    @expression(m, unc_c, u_quads_p + u_quads_m)
 
     ## McCormick Envelope
     ##-------------------
-    @variable(m, u_bil >= 0)
-    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p_det[g] * (μαm[g] - μαp[g]) for g in 1:n_generators) == u_bil)
+    # @variable(m, u_bil >= 0)
+    # @expression(m, μAm, αm * μm)
+    # @expression(m, μAp, αp * μp)
+    # @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p_det[g] * (μAm[g] + μAp[g]) for g in 1:n_generators) == u_bil)
 
-    @expression(m, unc_c, u_quad - u_bil)
+    # @expression(m, unc_c, u_quad)
 
     ## Objective
     ##----------

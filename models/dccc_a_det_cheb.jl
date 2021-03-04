@@ -1,4 +1,4 @@
-function build_dccc_a_det(generators, buses, lines, farms; output_level = 0, amdet = nothing, pdet = nothing, apdet = nothing)
+function build_dccc_a_det_cheb(generators, buses, lines, farms, pdet; output_level = 0)
 
 
         ## Model
@@ -13,21 +13,7 @@ function build_dccc_a_det(generators, buses, lines, farms; output_level = 0, amd
         @variable(m, αp[1:n_generators] >= 0)
         @variable(m, αm[1:n_generators] >= 0)
 
-        #@constraint(m, eq1, p .== pdet)
-        # if pdet != nothing
-        #         println("pdet")
-        #
-        # end
-        #
-        # # if amdet != nothing
-        # #         println("amdet")
-        # #         @constraint(m, eq21, αm .== amdet)
-        # # end
-        # #
-        # # if apdet != nothing
-        # #         println("apdet")
-        # #         @constraint(m, eq22, αp .== apdet)
-        # # end
+        #@constraint(m, p .== p_det)
 
         ## General Constraints
         ##--------------------
@@ -43,14 +29,8 @@ function build_dccc_a_det(generators, buses, lines, farms; output_level = 0, amd
         @constraint(m, γp, sum(αp[i] for i in 1:n_generators) == 1)
         @constraint(m, γm, sum(αm[i] for i in 1:n_generators) == 1)
 
-        @constraint(m, cc1[i in 1:n_generators], pdet[i] + μms * αm[i] - μps * αp[i] + za * (sm * αm[i] + sp * αp[i]) <= generators[i].Pgmax)
-        @constraint(m, cc2[i in 1:n_generators], -pdet[i] + μps * αp[i] - μms * αm[i] + za * (sm * αm[i] + sp * αp[i]) <= -generators[i].Pgmin)
-        # elseif amdet != nothing && apdet != nothing
-        #         @constraint(m, cc1[i in 1:n_generators], p[i] + μms * (αm[i]) + za * sm * αm[i] <= generators[i].Pgmax)
-        #         @constraint(m, cc2[i in 1:n_generators], -p[i] + μps * (αp[i]) + za * sp * αp[i] <= -generators[i].Pgmin)
-        # else
-        #         throw(Exception)
-        # end
+        @constraint(m, cc1[i in 1:n_generators], pdet[i] + μms * αm[i] - μps * αp[i] + z_cheb * (sm * αm[i] + sp * αp[i]) <= generators[i].Pgmax)
+        @constraint(m, cc2[i in 1:n_generators], -pdet[i] + μps * αp[i] - μms * αm[i] + z_cheb * (sm * αm[i] + sp * αp[i])  <= -generators[i].Pgmin)
 
         @variable(m, d_con >= 0)
         @variable(m, d_lin >= 0)
@@ -77,15 +57,6 @@ function build_dccc_a_det(generators, buses, lines, farms; output_level = 0, amd
         # @constraint(m, aprx23[g in 1:n_generators], ψp[g] <= αp[g] * generators[g].Pgmax + αp_min[g] * p[g] - αp_min[g] * generators[g].Pgmax)
         # @constraint(m, aprx24[g in 1:n_generators], ψp[g] <= αp[g] * generators[g].Pgmin + αp_max[g] * p[g] - αp_max[g] * generators[g].Pgmin)
         @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * pdet[g] * (μms * αm[g] - μps * αp[g]) for g in 1:n_generators) == d_bil)
-
-        # if pdet != nothing && (amdet == nothing && apdet == nothing)
-        #         println("objective --- 123")
-        #         @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * pdet[g] * (-μms * αm[g] + μps * αp[g]) for g in 1:n_generators) == d_bil)
-        # elseif amdet != nothing && apdet != nothing
-        #         @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p[g] * (-μms * amdet[g] + μps * apdet[g]) for g in 1:n_generators) == d_bil)
-        # else
-        #         throw(Exception)
-        # end
 
         ## Balancing Cost
         ##---------------

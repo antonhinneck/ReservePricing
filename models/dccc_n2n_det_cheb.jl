@@ -1,4 +1,4 @@
-function build_dccc_n2n_det(generators, buses, lines, farms, α_det; p_det = nothing, output_level = 0)
+function build_dccc_n2n_det_cheb(generators, buses, lines, farms, α_det; p_det = nothing, output_level = 0)
 
         ## Model
         ##------
@@ -11,7 +11,7 @@ function build_dccc_n2n_det(generators, buses, lines, farms, α_det; p_det = not
         @variable(m, θ[1:n_buses])
         @variable(m, α[1:n_generators, 1:n_farms] >= 0)
 
-        @constraint(m, fix, p_det .== p)
+        #@constraint(m, fix, p_det .== p)
 
         ## General Constraints
         ##--------------------
@@ -26,10 +26,10 @@ function build_dccc_n2n_det(generators, buses, lines, farms, α_det; p_det = not
 
         @constraint(m, χ[u in 1:n_farms], sum(α[i, u] for i in 1:n_generators) == 1)
 
-        @expression(m, μα, α * μ)
+        # @expression(m, μα, α * μ)
         @variable(m, p_uncert[1:n_generators] >= 0)
-        @constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].Pgmax)
-        @constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= -generators[i].Pgmin)
+        @constraint(m, cc1[i in 1:n_generators], p[i] + p_uncert[i] <= generators[i].Pgmax)
+        @constraint(m, cc2[i in 1:n_generators], -p[i] + p_uncert[i] <= -generators[i].Pgmin)
 
         ## Deterministic Costs
         ##--------------------
@@ -44,24 +44,25 @@ function build_dccc_n2n_det(generators, buses, lines, farms, α_det; p_det = not
 
         ## Bilinear
         ##---------
-        @variable(m, u_bil >= 0)
-        if p_det == nothing
-            @constraint(m, bilinear_costs, sum(2 * generators[g].pi1 * μa[g] * p[g] for g in 1:n_generators) == u_bil)
-        else
-            @constraint(m, bilinear_costs, sum(2 * generators[g].pi1 * μα[g] * p_det[g] for g in 1:n_generators) == u_bil)
-        end
+        # @variable(m, u_bil >= 0)
+        # if p_det == nothing
+        #     @constraint(m, bilinear_costs, sum(2 * generators[g].pi1 * μa[g] * p[g] for g in 1:n_generators) == u_bil)
+        # else
+        #     @constraint(m, bilinear_costs, sum(2 * generators[g].pi1 * μα[g] * p_det[g] for g in 1:n_generators) == u_bil)
+        # end
 
         ## Quadratic
         ##----------
-        @variable(m, u_quads >= 0)
-        @expression(m, norm, α * diagm(σ))
-        @constraint(m, uncert_gen1[i in 1:n_generators], vcat(p_uncert[i], norm[i, :]) in SecondOrderCone())
-        @constraint(m, vec(vcat(0.5, u_quads, C_rt * p_uncert)) in RotatedSecondOrderCone())
+        @variable(m, unc_c >= 0)
+        @expression(m, norm, α * diagm(σ_cheb))
+        println(typeof(norm[1, :][1]))
+        @constraint(m, uncert_gen[i in 1:n_generators], vec(vcat(p_uncert[i], norm[i, :])) in SecondOrderCone())
+        @constraint(m, vec(vcat(0.5, unc_c, C_rt * p_uncert)) in RotatedSecondOrderCone())
 
-        @variable(m, u_quadm >= 0)
-        @constraint(m, vec(vcat(0.5, u_quadm, C_rt * μα)) in RotatedSecondOrderCone())
+        # @variable(m, u_quadm >= 0)
+        # @constraint(m, vec(vcat(0.5, u_quadm, C_rt * μα)) in RotatedSecondOrderCone())
 
-        @expression(m, unc_c, u_quads + u_quadm - u_bil)
+        # @expression(m, unc_c, u_quads)
 
         ## Objective
         ##----------

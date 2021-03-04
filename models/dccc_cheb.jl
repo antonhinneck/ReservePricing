@@ -28,8 +28,8 @@ function build_dccc_cheb(generators, buses, lines, farms)
 
     @constraint(m, γ, sum(α[i] for i in 1:n_generators) == 1)
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + sum(σ_cheb) * α[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + sum(σ_cheb) * α[i] <= -generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + z_cheb * α[i] * s <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + z_cheb * α[i] * s <= -generators[i].Pgmin)
 
     ## Generation Cost
     ##----------------
@@ -47,13 +47,9 @@ function build_dccc_cheb(generators, buses, lines, farms)
     @variable(m, u_quads >= 0)
     @constraint(m, vec(vcat(0.5, u_quads, C_rt * α .* s)) in RotatedSecondOrderCone())
 
-    @variable(m, u_quadm >= 0)
-    @constraint(m, vec(vcat(0.5, u_quadm, C_rt * α .* 𝛭)) in RotatedSecondOrderCone())
-    @expression(m, unc_c, u_quadm + u_quads)
-
     ## Objective
     ##----------
-    @objective(m, Min, det_c + unc_c)
+    @objective(m, Min, det_c + u_quads)
 
     return m
 

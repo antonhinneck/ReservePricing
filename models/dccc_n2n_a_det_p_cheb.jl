@@ -1,4 +1,4 @@
-function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_level = 0)
+function build_dccc_n2n_a_det_p_cheb(generators, buses, lines, farms, p_det; output_level = 0)
 
     ## Model
     ##------
@@ -40,8 +40,8 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     @expression(m, μαp, αp * μp)
 
     #if
-    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] - μαp[i] + za * p_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] - μαm[i] + za * p_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] - μαp[i] + z_cheb * p_uncert[i] <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] - μαm[i] + z_cheb * p_uncert[i] <= -generators[i].Pgmin)
 
     ## Deterministic Costs
     ##--------------------

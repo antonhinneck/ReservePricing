@@ -1,9 +1,9 @@
-function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_level = 0)
+function build_dccc_n2n_a_det_p_cheb(generators, buses, lines, farms, p_det; output_level = 0)
 
     ## Model
     ##------
     output_level = output_level
-    m = Model(with_optimizer(Mosek.Optimizer,  MSK_IPAR_LOG = output_level))
+    m = Model(with_optimizer(Mosek.Optimizer,  MSK_IPAR_LOG=output_level))
 
     ## Variables
     ##----------
@@ -14,12 +14,11 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     @variable(m, αm[1:n_generators, 1:n_farms] >= 0)
 
     @constraint(m, fixp, p .== p_det)
-    #@constraint(m, eq, αp .== αm)
 
     ## General Constraints
     ##--------------------
     @constraint(m, θ[slack_bus] == 0)
-    @expression(m, p_by_bus[i=1:n_buses], length(buses[i].genids) > 0 ? sum(p[k] for k in buses[i].genids) : 0.0)
+    @expression(m, p_by_bus[i=1:n_buses], length(buses[i].genids) > 0 ? sum(p_det[k] for k in buses[i].genids) : 0.0)
     @expression(m, pu_by_bus[i=1:n_buses], length(buses[i].farmids) > 0 ? sum(farms[k].forecast for k in buses[i].farmids) : 0.0)
     @constraint(m, mc, B_node * θ .== p_by_bus .+ pu_by_bus .- d)
 
@@ -31,17 +30,18 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     @constraint(m, χp[u in 1:n_farms], sum(αp[i, u] for i in 1:n_generators) == 1)
     @constraint(m, χm[u in 1:n_farms], sum(αm[i, u] for i in 1:n_generators) == 1)
 
-    @variable(m, p_uncert[1:n_generators] >= 0)
-    @expression(m, norm_m, αm * Σm_rt)
-    @expression(m, norm_p, αp * Σp_rt)
-    @constraint(m, uncert_gen_m[i in 1:n_generators], vcat(p_uncert[i], norm_m[i, :], norm_p[i, :]) in SecondOrderCone())
+    @variable(m, pp_uncert[1:n_generators] >= 0)
+    @variable(m, pm_uncert[1:n_generators] >= 0)
+    @expression(m, norm_up, αp * Σp_rt)
+    @expression(m, norm_dwn, αm * Σm_rt)
+    @constraint(m, uncert_gen1[i in 1:n_generators], vec(vcat(pp_uncert[i], norm_up[i,:]...)) in SecondOrderCone())
+    @constraint(m, uncert_gen2[i in 1:n_generators], vec(vcat(pm_uncert[i], norm_dwn[i,:]...)) in SecondOrderCone())
 
     @expression(m, μαm, αm * μm)
     @expression(m, μαp, αp * μp)
 
-    #if
-    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] - μαp[i] + za * p_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] - μαm[i] + za * p_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + μαm[i] - μαp[i] + z_cheb * (pm_uncert[i] + pp_uncert[i]) <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + μαp[i] - μαm[i] + z_cheb * (pm_uncert[i] + pp_uncert[i]) <= -generators[i].Pgmin)
 
     ## Deterministic Costs
     ##--------------------
@@ -61,8 +61,13 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     #----------
     @variable(m, u_quads_p >= 0)
     @variable(m, u_quads_m >= 0)
+    @expression(m, norm_m, αm * Σm_rt)
+    @expression(m, norm_p, αp * Σp_rt)
+    @constraint(m, uncert_gen_m[i in 1:n_generators], vcat(pm_uncert[i], norm_m[i, :]) in SecondOrderCone())
+    @constraint(m, uncert_gen_p[i in 1:n_generators], vcat(pp_uncert[i], norm_p[i, :]) in SecondOrderCone())
 
-    @constraint(m, vec(vcat(0.5, u_quads_m, C_rt * p_uncert)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, u_quads_p, C_rt * pp_uncert)) in RotatedSecondOrderCone())
+    @constraint(m, vec(vcat(0.5, u_quads_m, C_rt * pm_uncert)) in RotatedSecondOrderCone())
 
     @variable(m, u_quadm_p >= 0)
     @variable(m, u_quadm_m >= 0)
@@ -74,6 +79,8 @@ function build_dccc_n2n_a_det_p(generators, buses, lines, farms, p_det; output_l
     ## McCormick Envelope
     ##-------------------
     @variable(m, u_bil >= 0)
+    # @expression(m, μAm, αm * μm)
+    # @expression(m, μAp, αp * μp)
     @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * p_det[g] * (μαm[g] - μαp[g]) for g in 1:n_generators) == u_bil)
 
     @expression(m, unc_c, u_quad - u_bil)

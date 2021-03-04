@@ -1,4 +1,4 @@
-function build_dccc_a_apx(generators, buses, lines, farms; αm_min = nothing, αm_max = nothing, αp_min = nothing, αp_max = nothing, output_level = 0)
+function build_dccc_a_apx(generators, buses, lines, farms; αm_min = nothing, αm_max = nothing, αp_min = nothing, αp_max = nothing, output_level = 0, cheb = false)
 
     ## Model
     ##------
@@ -42,8 +42,13 @@ function build_dccc_a_apx(generators, buses, lines, farms; αm_min = nothing, α
     @constraint(m, γp, sum(αp[i] for i in 1:n_generators) == 1)
     @constraint(m, γm, sum(αm[i] for i in 1:n_generators) == 1)
 
-    @constraint(m, cc1[i in 1:n_generators], p[i] + μms * (αm[i]) + za * sm * αm[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + μps * (αp[i]) + za * sp * αp[i] <= -generators[i].Pgmin)
+    if !cheb
+        @constraint(m, cc1[i in 1:n_generators], p[i] + μms * αm[i] - μps * αp[i] + za * (sm * αm[i] + sp * αp[i]) <= generators[i].Pgmax)
+        @constraint(m, cc2[i in 1:n_generators], -p[i] + μps * αp[i] - μms * αm[i] + za * (sm * αm[i] + sp * αp[i]) <= -generators[i].Pgmin)
+    else
+        @constraint(m, cc1[i in 1:n_generators], p[i] + μms * αm[i] - μps * αp[i] + z_cheb * (sm * αm[i] + sp * αp[i]) <= generators[i].Pgmax)
+        @constraint(m, cc2[i in 1:n_generators], -p[i] + μps * αp[i] - μms * αm[i] + z_cheb * (sm * αm[i] + sp * αp[i]) <= -generators[i].Pgmin)
+    end
 
     @variable(m, d_con >= 0)
     @variable(m, d_lin >= 0)
@@ -70,7 +75,7 @@ function build_dccc_a_apx(generators, buses, lines, farms; αm_min = nothing, α
     @constraint(m, aprx23[g in 1:n_generators], ψp[g] <= αp[g] * generators[g].Pgmax + αp_min[g] * p[g] - αp_min[g] * generators[g].Pgmax)
     @constraint(m, aprx24[g in 1:n_generators], ψp[g] <= αp[g] * generators[g].Pgmin + αp_max[g] * p[g] - αp_max[g] * generators[g].Pgmin)
 
-    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * (μms * ψm[g] + μps * ψp[g]) for g in 1:n_generators) == d_bil)
+    @constraint(m, bilinear_costs,  2 * sum(generators[g].pi1 * (μms * ψm[g] - μps * ψp[g]) for g in 1:n_generators) == d_bil)
 
     ## Balancing Cost
     ##---------------

@@ -26,8 +26,8 @@ function build_dccc_n2n_cheb(generators, buses, lines, farms; output_level = 0)
     @constraint(m, χ[u in 1:n_farms], sum(α[i, u] for i in 1:n_generators) == 1)
 
     @variable(m, p_uncert[1:n_generators] >= 0)
-    @constraint(m, cc1[i in 1:n_generators], p[i] + z * p_uncert[i] <= generators[i].Pgmax)
-    @constraint(m, cc2[i in 1:n_generators], -p[i] + z * p_uncert[i] <= -generators[i].Pgmin)
+    @constraint(m, cc1[i in 1:n_generators], p[i] + z_cheb * p_uncert[i] <= generators[i].Pgmax)
+    @constraint(m, cc2[i in 1:n_generators], -p[i] + z_cheb * p_uncert[i] <= -generators[i].Pgmin)
 
     ## Deterministic Costs
     ##--------------------
